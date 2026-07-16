@@ -155,13 +155,51 @@ document.addEventListener('DOMContentLoaded', () => {
     let map = null;
     let markers = {};
     const geoCache = JSON.parse(localStorage.getItem('geoCache') || '{}');
-
     const initMap = () => {
         if(document.getElementById('map')) {
-            map = L.map('map').setView([47.5162, 14.5501], 7);
+            const austriaBounds = L.latLngBounds(
+                [46.3, 9.4], // South West
+                [49.1, 17.2] // North East
+            );
+            map = L.map('map', {
+                center: [47.5162, 14.5501],
+                zoom: 7,
+                minZoom: 6,
+                maxBounds: austriaBounds,
+                maxBoundsViscosity: 0.8
+            });
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
+
+            // Fetch Austria boundary to grey out the rest of the world
+            fetch('https://nominatim.openstreetmap.org/search?country=Austria&polygon_geojson=1&format=json')
+                .then(res => res.json())
+                .then(data => {
+                    if(data && data[0] && data[0].geojson) {
+                        const worldCoords = [
+                            [90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]
+                        ];
+                        let coords = [worldCoords];
+                        
+                        const geojsonCoords = data[0].geojson.coordinates;
+                        if (data[0].geojson.type === 'Polygon') {
+                            // Reverse [lon, lat] to [lat, lon] for Leaflet
+                            coords.push(geojsonCoords[0].map(c => [c[1], c[0]]));
+                        } else if (data[0].geojson.type === 'MultiPolygon') {
+                            geojsonCoords.forEach(poly => {
+                                coords.push(poly[0].map(c => [c[1], c[0]]));
+                            });
+                        }
+                        
+                        L.polygon(coords, {
+                            color: 'transparent',
+                            fillColor: '#000',
+                            fillOpacity: 0.65
+                        }).addTo(map);
+                    }
+                })
+                .catch(err => console.error('Error fetching Austria boundary', err));
         }
     };
     initMap();

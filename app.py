@@ -642,7 +642,7 @@ def update_user_group(user_id):
     try:
         conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (data.get('group_id'), user_id))
         conn.commit()
-        socketio.emit('users_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -665,7 +665,7 @@ def api_missions():
         conn.commit()
         mission_id = c.lastrowid
         conn.close()
-        socketio.emit('missions_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True, "mission_id": mission_id})
 
 @app.route('/api/missions/<int:mission_id>', methods=['PUT', 'DELETE'])
@@ -678,7 +678,7 @@ def api_mission_detail(mission_id):
         conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
         conn.commit()
         conn.close()
-        socketio.emit('missions_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -686,7 +686,7 @@ def api_mission_detail(mission_id):
                      (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
         conn.commit()
         conn.close()
-        socketio.emit('missions_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
 
 @app.route('/api/vehicles', methods=['GET', 'POST'])
@@ -703,7 +703,7 @@ def api_vehicles():
                      (data['name'], data.get('type',''), data.get('equipment_list',''), '{}', data.get('status','available')))
         conn.commit()
         conn.close()
-        socketio.emit('vehicles_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
 
 @app.route('/api/vehicles/<int:vehicle_id>', methods=['PUT', 'DELETE'])
@@ -714,7 +714,7 @@ def api_vehicle_detail(vehicle_id):
         conn.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
         conn.commit()
         conn.close()
-        socketio.emit('vehicles_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -722,7 +722,7 @@ def api_vehicle_detail(vehicle_id):
                      (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
         conn.commit()
         conn.close()
-        socketio.emit('vehicles_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
 
 @app.route('/api/missions/<int:mission_id>/logs', methods=['GET', 'POST'])
@@ -739,7 +739,7 @@ def api_mission_logs(mission_id):
                      (mission_id, data['log_text'], session['user_id']))
         conn.commit()
         conn.close()
-        socketio.emit('mission_logs_update', {"mission_id": mission_id}, broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
 @app.route('/api/users', methods=['GET', 'POST'])
 @login_required
@@ -787,7 +787,7 @@ def api_users():
                      (username, first_name, last_name, pwd_hash, 3, group_id, invite_token))
         conn.commit()
         conn.close()
-        socketio.emit('users_update', broadcast=True)
+        socketio.emit()
         return jsonify({
             "success": True, 
             "username": username,
@@ -803,7 +803,7 @@ def manage_user(user_id):
         conn.commit()
         conn.close()
         logger.info(f"User ID {user_id} deleted.")
-        socketio.emit('users_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -811,7 +811,7 @@ def manage_user(user_id):
                      (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), user_id))
         conn.commit()
         conn.close()
-        socketio.emit('users_update', broadcast=True)
+        socketio.emit()
         return jsonify({"success": True})
 
 @app.route('/api/users/me/permissions', methods=['GET'])
@@ -837,7 +837,7 @@ def update_user_group_id(user_id):
     conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (new_group_id, user_id))
     conn.commit()
     conn.close()
-    socketio.emit('users_update', broadcast=True)
+    socketio.emit()
     return jsonify({"success": True})
 
 @app.route('/api/invitations', methods=['POST'])
@@ -852,7 +852,7 @@ def create_invitation():
     conn.commit()
     conn.close()
     logger.info(f"Invitation created.")
-    socketio.emit('users_update', broadcast=True)
+    socketio.emit()
     return jsonify({"success": True, "token": token})
 
 # --- Socket.IO Handlers (Group Owner / Admin) ---
