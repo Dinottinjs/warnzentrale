@@ -1153,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSystemUpdate = document.getElementById('btn-system-update');
     if(btnSystemUpdate) {
         btnSystemUpdate.addEventListener('click', async () => {
-            const btnText = btnSystemUpdate.innerText;
+            const btnHtml = btnSystemUpdate.innerHTML;
             btnSystemUpdate.disabled = true;
             btnSystemUpdate.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Update läuft...';
             try {
@@ -1171,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Verbindungsfehler beim Update.', 'error');
             } finally {
                 btnSystemUpdate.disabled = false;
-                btnSystemUpdate.innerText = btnText;
+                btnSystemUpdate.innerHTML = btnHtml;
             }
         });
     }

@@ -78,6 +78,16 @@ logging.basicConfig(level=logging.INFO,
                     ])
 logger = logging.getLogger(__name__)
 
+def schedule_restart():
+    def restart_task():
+        import time, subprocess, sys, os
+        time.sleep(1.5)
+        # Start new instance and exit this one to free the port
+        subprocess.Popen([sys.executable, 'app.py'], close_fds=True)
+        os._exit(0)
+    import threading
+    threading.Thread(target=restart_task).start()
+
 app = Flask(__name__)
 app.secret_key = 'super_secret_dashboard_key_v3'
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -657,7 +667,8 @@ def check_and_update():
             logger.info("System wurde aktualisiert und startet nun neu...")
             
             # Restart current python process
-            os.execv(sys.executable, ['python', 'app.py'])
+            schedule_restart()
+            return jsonify({"status": "updated"})
         else:
             return jsonify({"status": "up_to_date"})
     except subprocess.CalledProcessError as e:
@@ -1020,7 +1031,7 @@ def handle_system_action(data):
         logger.warning(f"Admin '{session.get('username')}' initiated system RESTART.")
         socketio.emit('server_message', {"msg": "Server startet neu...", "type": "warning"})
         # Start a new process
-        os.execl(sys.executable, sys.executable, *sys.argv)
+        schedule_restart()
     elif action == 'shutdown':
         logger.warning(f"Admin '{session.get('username')}' initiated system SHUTDOWN.")
         socketio.emit('server_message', {"msg": "Server wird heruntergefahren...", "type": "error"})
@@ -1197,6 +1208,7 @@ def get_free_port(starting_port):
     port = starting_port
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 s.bind(('0.0.0.0', port))
                 return port
