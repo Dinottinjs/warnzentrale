@@ -59,7 +59,7 @@
                     <div id="header-user-role" class="text-xs text-neon-green">{{ current_role }}</div>
                     <div id="clock" class="text-xs font-mono tracking-widest text-gray-500 dark:text-gray-400">00:00:00</div>
                 </div>
-                <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-md">
+                <img id="header-avatar" src="https://ui-avatars.com/api/?name={{ current_user }}&background=random" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-md">
             </div>
         </div>
     </header>
@@ -153,7 +153,7 @@
                             </button>
                         </div>
                     </div>
-                    <div id="map" class="flex-1 w-full z-0" style="min-height: 350px;"></div>
+                    <div id="map" class="flex-1 w-full z-0" style="height: 500px; min-height: 350px;"></div>
                 </div>
 
                 <!-- Active Events from Kumpel Software -->
@@ -531,7 +531,7 @@
                             </form>
             
                             <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl bg-gray-50 dark:bg-gray-900/30">
-                                <img id="preview-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
+                                <img id="preview-avatar" src="https://ui-avatars.com/api/?name={{ current_user }}&background=random" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
                                 
                                 <form id="avatar-form" class="flex flex-col items-center w-full">
                                     <label class="block w-full cursor-pointer bg-gray-800 hover:bg-black text-white dark:bg-gray-800 dark:hover:bg-gray-700 text-center py-2 rounded shadow transition-colors mb-2 btn-glow">

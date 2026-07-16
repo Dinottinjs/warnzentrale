@@ -202,6 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }).addTo(map);
 
             // Map is loaded without the blackout bounding box.
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 500);
         }
     };
     initMap();
