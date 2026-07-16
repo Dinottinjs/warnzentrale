@@ -23,7 +23,7 @@
     </script>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v={{ sys_version }}">
     <!-- Socket.IO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
     <!-- FontAwesome -->
@@ -802,6 +802,6 @@
             setTimeout(() => { if (window._leafletMap) window._leafletMap.invalidateSize(); }, 50);
         }
     </script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v={{ sys_version }}"></script>
 </body>
 </html>

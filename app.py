@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import datetime
 from functools import wraps
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory, make_response
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -508,14 +508,22 @@ def index():
         except Exception:
             user_perms = {}
 
-    return render_template(
+    import time
+    sys_version = int(time.time())
+
+    response = make_response(render_template(
         'index.html',
         current_user=current_user,
         current_role=current_role,
         current_group_id=current_group_id,
         has_default_password=has_default_password,
-        user_perms=user_perms
-    )
+        user_perms=user_perms,
+        sys_version=sys_version
+    ))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 # --- System Info ---
 @app.route('/api/system_info', methods=['GET'])

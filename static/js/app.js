@@ -20,6 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold inline-block">${roleName || 'Unbekannt'}</span>`;
     };
 
+    const initRoleBadges = () => {
+        const roleEl = document.getElementById('header-user-role');
+        const centerRoleEl = document.getElementById('header-center-role');
+        const initialRole = window.currentRole || (roleEl ? roleEl.textContent.trim() : '');
+        
+        if (initialRole) {
+            window.currentRole = initialRole;
+            if (roleEl) roleEl.innerHTML = window.getRoleBadge(initialRole);
+            if (centerRoleEl) centerRoleEl.innerHTML = window.getRoleBadge(initialRole);
+        }
+    };
+    initRoleBadges();
+
     // Function to check and enforce permissions live
     window.checkPermissionsLive = async () => {
         try {
