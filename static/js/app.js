@@ -201,34 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            // Fetch Austria boundary to grey out the rest of the world
-            fetch('https://nominatim.openstreetmap.org/search?country=Austria&polygon_geojson=1&format=json')
-                .then(res => res.json())
-                .then(data => {
-                    if(data && data[0] && data[0].geojson) {
-                        const worldCoords = [
-                            [90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]
-                        ];
-                        let coords = [worldCoords];
-                        
-                        const geojsonCoords = data[0].geojson.coordinates;
-                        if (data[0].geojson.type === 'Polygon') {
-                            // Reverse [lon, lat] to [lat, lon] for Leaflet
-                            coords.push(geojsonCoords[0].map(c => [c[1], c[0]]));
-                        } else if (data[0].geojson.type === 'MultiPolygon') {
-                            geojsonCoords.forEach(poly => {
-                                coords.push(poly[0].map(c => [c[1], c[0]]));
-                            });
-                        }
-                        
-                        L.polygon(coords, {
-                            color: 'transparent',
-                            fillColor: '#000',
-                            fillOpacity: 0.65
-                        }).addTo(map);
-                    }
-                })
-                .catch(err => console.error('Error fetching Austria boundary', err));
+            // Map is loaded without the blackout bounding box.
         }
     };
     initMap();
@@ -1112,6 +1085,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch(e) {
                 showToast('Verbindungsfehler', 'error');
+            }
+        });
+    }
+
+    const btnSystemUpdate = document.getElementById('btn-system-update');
+    if(btnSystemUpdate) {
+        btnSystemUpdate.addEventListener('click', async () => {
+            const btnText = btnSystemUpdate.innerText;
+            btnSystemUpdate.disabled = true;
+            btnSystemUpdate.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Update läuft...';
+            try {
+                const res = await fetch('/api/system/update', { method: 'POST' });
+                const data = await res.json();
+                if(res.ok && data.status === 'up_to_date') {
+                    showToast('Das System ist bereits auf dem neuesten Stand.', 'success');
+                } else if(res.ok) {
+                    showToast('Update erfolgreich! Das System startet nun neu.', 'success');
+                    setTimeout(() => window.location.reload(), 4000); // Reload after 4s
+                } else {
+                    showToast('Fehler beim Update: ' + (data.error || 'Unbekannt'), 'error');
+                }
+            } catch(e) {
+                showToast('Verbindungsfehler beim Update.', 'error');
+            } finally {
+                btnSystemUpdate.disabled = false;
+                btnSystemUpdate.innerText = btnText;
             }
         });
     }

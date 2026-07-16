@@ -625,6 +625,30 @@ def api_system_security():
         "session_timeout": get_setting("session_timeout", "60")
     })
 
+@app.route('/api/system/update', methods=['POST'])
+@permission_required('manage_system')
+def check_and_update():
+    import subprocess
+    import sys
+    try:
+        # Check for updates
+        subprocess.run(["git", "fetch", "origin", "main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        status = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
+        if "Your branch is behind" in status.stdout or "Dein Branch ist hinter" in status.stdout:
+            # Update available
+            subprocess.run(["git", "reset", "--hard", "origin/main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--disable-pip-version-check"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            logger.info("System wurde aktualisiert und startet nun neu...")
+            
+            # Restart current python process
+            os.execv(sys.executable, ['python', 'app.py'])
+        else:
+            return jsonify({"status": "up_to_date"})
+    except Exception as e:
+        logger.error(f"Fehler beim Update: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # --- Kumpel Proxy ---
 def get_kumpel_url(path):
     ip = get_setting("kumpel_ip", "127.0.0.1")
@@ -1179,12 +1203,7 @@ if __name__ == '__main__':
     print(f" WARNZENTRALE LOKAL ERREICHBAR UNTER:")
     print(f" -> http://127.0.0.1:{run_port}")
     print("="*50 + "\n")
-
-    import threading
-    import webbrowser
-    def open_browser():
-        webbrowser.open(f'http://127.0.0.1:{run_port}')
-    threading.Timer(1.5, open_browser).start()
+    print("="*50 + "\n")
 
     # Use socketio.run instead of app.run
     socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)
