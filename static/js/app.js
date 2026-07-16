@@ -550,6 +550,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Profil aktualisiert', 'success');
                     document.getElementById('header-user-name').textContent = data.name;
                     if(data.password) {
+                        const pwWarning = document.getElementById('password-warning');
+                        if (pwWarning) pwWarning.remove();
                         alert("Das Passwort wurde erfolgreich geändert.\n\nBitte starte das gesamte System (die install.bat Konsole) neu, damit alles einwandfrei und zu 100% funktioniert!");
                     }
                     document.getElementById('acc-password').value = '';
@@ -838,8 +840,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('permissions_updated', () => {
             checkPermissionsLive();
-            if (typeof window.loadRolesMatrix === 'function') {
-                window.loadRolesMatrix();
+            if (typeof window.loadPermissionsMatrix === 'function') {
+                window.loadPermissionsMatrix();
             }
         });
 
@@ -867,8 +869,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             const myRole = roles.find(r => r.id === me.role_id);
                             if (myRole) {
                                 const roleEl = document.getElementById('header-user-role');
-                                if (roleEl && window.currentRole !== myRole.role_name) {
-                                    roleEl.innerHTML = window.getRoleBadge(myRole.role_name);
+                                const centerRoleEl = document.getElementById('header-center-role');
+                                if (window.currentRole !== myRole.role_name) {
+                                    if (roleEl) roleEl.innerHTML = window.getRoleBadge(myRole.role_name);
+                                    if (centerRoleEl) centerRoleEl.innerHTML = window.getRoleBadge(myRole.role_name);
                                     window.currentRole = myRole.role_name;
                                 }
                             }
@@ -981,7 +985,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    const loadPermissionsMatrix = async () => {
+    window.loadPermissionsMatrix = async () => {
         try {
             const res = await fetch('/api/db/roles');
             const roles = await res.json();
@@ -1057,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             if (e.currentTarget.dataset.tab === 'owner') {
-                loadPermissionsMatrix();
+                window.loadPermissionsMatrix();
                 if (socket) socket.emit('get_logs');
             }
         });

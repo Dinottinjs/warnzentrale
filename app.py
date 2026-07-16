@@ -573,6 +573,9 @@ def account():
     if request.method == 'POST':
         data = request.json
         if "name" in data and data["name"]:
+            if session['user_id'] == 1 and data["name"].lower() != "admin":
+                conn.close()
+                return jsonify({"error": "Sicherheitswarnung: Der Benutzername des Hauptadministrators darf nicht geändert werden!"}), 403
             conn.execute("UPDATE users SET username = ? WHERE id = ?", (data["name"], session['user_id']))
             session['username'] = data["name"]
         if "password" in data and data["password"]:
@@ -971,6 +974,9 @@ def api_users():
 def manage_user(user_id):
     conn = get_db()
     if request.method == 'DELETE':
+        if user_id == 1:
+            conn.close()
+            return jsonify({"error": "Sicherheitswarnung: Der Hauptadministrator kann nicht gelöscht werden!"}), 403
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         conn.close()
@@ -979,6 +985,14 @@ def manage_user(user_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
+        if user_id == 1:
+            if data.get('username') and data.get('username').lower() != 'admin':
+                conn.close()
+                return jsonify({"error": "Sicherheitswarnung: Der Benutzername des Hauptadministrators darf nicht geändert werden!"}), 403
+            if data.get('role_id') and str(data.get('role_id')) != '1':
+                conn.close()
+                return jsonify({"error": "Sicherheitswarnung: Die Rolle des Hauptadministrators darf nicht geändert werden!"}), 403
+            
         conn.execute("UPDATE users SET username = COALESCE(?, username), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), group_id = COALESCE(?, group_id), role_id = COALESCE(?, role_id) WHERE id = ?", 
                      (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), data.get('role_id'), user_id))
         conn.commit()
