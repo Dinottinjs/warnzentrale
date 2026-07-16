@@ -1049,6 +1049,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) {}
     };
 
+    const loadSecurityConfig = async () => {
+        try {
+            const res = await fetch('/api/system/security');
+            const data = await res.json();
+            const secTimeout = document.getElementById('sec-timeout');
+            const secMaintenance = document.getElementById('sec-maintenance');
+            if(secTimeout) secTimeout.value = data.session_timeout;
+            if(secMaintenance) secMaintenance.checked = (data.maintenance_mode === '1');
+        } catch(e) {}
+    };
+
     window.toggleWifiConfig = (mode) => {
         const container = document.getElementById('wifi-config-container');
         if(!container) return;
@@ -1078,6 +1089,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch(e) {
                 showToast('Fehler beim Speichern', 'error');
+            }
+        });
+    const securityForm = document.getElementById('security-form');
+    if(securityForm) {
+        securityForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                session_timeout: document.getElementById('sec-timeout').value,
+                maintenance_mode: document.getElementById('sec-maintenance').checked ? '1' : '0'
+            };
+            try {
+                const res = await fetch('/api/system/security', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if(res.ok) {
+                    showToast('Sicherheitseinstellungen gespeichert.', 'success');
+                } else {
+                    showToast('Fehler beim Speichern', 'error');
+                }
+            } catch(e) {
+                showToast('Verbindungsfehler', 'error');
             }
         });
     }
@@ -1715,6 +1749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadKumpelConfig();
     loadAccountConfig();
     loadSystemConfig();
+    loadSecurityConfig();
     
     // Initial data load for dropdowns and views
     if (typeof loadGroupsManagement === 'function') loadGroupsManagement();

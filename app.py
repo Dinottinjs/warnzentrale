@@ -292,6 +292,10 @@ def init_db():
         c.execute("INSERT INTO settings (key, value) VALUES ('network_mode', 'lan')")
         c.execute("INSERT INTO settings (key, value) VALUES ('wifi_ssid', '')")
         
+    # Always try inserting new keys for upgrades
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('session_timeout', '60')")
+    c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('maintenance_mode', '0')")
+        
     conn.commit()
     conn.close()
 
@@ -340,6 +344,40 @@ def admin_required(f):
             return jsonify({"error": "Forbidden"}), 403
         return f(*args, **kwargs)
     return decorated_function
+
+from datetime import timedelta
+
+@app.before_request
+def security_checks():
+    if request.path.startswith('/static') or request.path in ['/login', '/logout']:
+        return
+        
+    conn = get_db()
+    
+    # Check Maintenance Mode
+    m_mode = conn.execute("SELECT value FROM settings WHERE key = 'maintenance_mode'").fetchone()
+    if m_mode and m_mode['value'] == '1':
+        if 'user_id' in session:
+            role = conn.execute("SELECT role_name FROM roles JOIN users ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+            if not role or role['role_name'] != 'Admin':
+                conn.close()
+                session.clear()
+                return "Das System befindet sich im Wartungsmodus. Nur Administratoren haben Zugriff.", 503
+        else:
+            conn.close()
+            return "Das System befindet sich im Wartungsmodus.", 503
+            
+    # Check Session Timeout
+    s_timeout = conn.execute("SELECT value FROM settings WHERE key = 'session_timeout'").fetchone()
+    conn.close()
+    
+    if s_timeout and s_timeout['value'].isdigit():
+        minutes = int(s_timeout['value'])
+        if minutes > 0:
+            app.permanent_session_lifetime = timedelta(minutes=minutes)
+            session.permanent = True
+
+# --- Routes ---
 
 def socket_permission_required(perm_name):
     def decorator(f):
@@ -572,6 +610,20 @@ def upload_avatar():
         return jsonify({"success": True, "filename": filename})
     except Exception as e:
         return jsonify({"error": "Invalid image"}), 400
+
+@app.route('/api/system/security', methods=['GET', 'POST'])
+@permission_required('manage_system')
+def api_system_security():
+    if request.method == 'POST':
+        data = request.json
+        if "maintenance_mode" in data: set_setting('maintenance_mode', data['maintenance_mode'])
+        if "session_timeout" in data: set_setting('session_timeout', data['session_timeout'])
+        logger.info(f"Admin updated security settings.")
+        return jsonify({"success": True})
+    return jsonify({
+        "maintenance_mode": get_setting("maintenance_mode", "0"),
+        "session_timeout": get_setting("session_timeout", "60")
+    })
 
 # --- Kumpel Proxy ---
 def get_kumpel_url(path):
