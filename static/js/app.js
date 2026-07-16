@@ -1067,6 +1067,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Fehler beim Speichern', 'error');
             }
         });
+    }
+
     const securityForm = document.getElementById('security-form');
     if(securityForm) {
         securityForm.addEventListener('submit', async (e) => {
