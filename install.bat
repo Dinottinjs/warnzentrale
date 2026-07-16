@@ -8,41 +8,46 @@ echo.
 
 :: 1. Check Python and Git (Winget)
 echo [1/5] Pruefe und installiere ggf. Python via Winget...
-set "PYTHON_JUST_INSTALLED=0"
 
-winget --version >nul 2>&1
-if %errorlevel% neq 0 goto :skip_winget
-
+:: Prüfen ob Python direkt erreichbar ist (und kein Store Alias)
+set "PYTHON_EXE="
 python --version >nul 2>&1
-if %errorlevel% equ 0 goto :python_installed
+if %errorlevel% equ 0 (
+    set "PYTHON_EXE=python"
+    goto :python_found
+)
+
+:: Suche in Standard-Winget-Installationspfaden
+if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    goto :python_found
+)
+if exist "%PROGRAMFILES%\Python311\python.exe" (
+    set "PYTHON_EXE=%PROGRAMFILES%\Python311\python.exe"
+    goto :python_found
+)
 
 echo Installiere Python 3...
 winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
-set "PYTHON_JUST_INSTALLED=1"
 
-:skip_winget
-:python_installed
-
-python --version >nul 2>&1
-if %errorlevel% neq 0 (
-    color 0C
-    if "!PYTHON_JUST_INSTALLED!"=="1" (
-        echo [HINWEIS] Python wurde erfolgreich ueber Winget bezogen!
-        echo Die Konsole muss nun neu gestartet werden, damit die neuen Pfade geladen werden.
-        echo Bitte schliesse dieses Fenster komplett und starte 'install.bat' danach erneut.
-    ) else (
-        echo [FEHLER] Python wurde nicht gefunden und konnte nicht installiert werden.
-        echo Bitte lade dir Python 3 manuell von python.org herunter und installiere es!
-    )
-    pause
-    exit /b 1
+:: Erneute Prüfung nach Installation
+if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+    goto :python_found
 )
-echo [OK] Python ist verfuegbar.
+
+echo [FEHLER] Python wurde nicht gefunden und konnte nicht eingebunden werden.
+echo Bitte lade dir Python 3 manuell von python.org herunter und installiere es!
+pause
+exit /b 1
+
+:python_found
+echo [OK] Python gefunden unter: !PYTHON_EXE!
 echo.
 
 :: 2. Create Virtual Environment
 echo [2/5] Erstelle virtuelle Umgebung (.venv)...
-python -m venv .venv
+"!PYTHON_EXE!" -m venv .venv
 if %errorlevel% neq 0 (
     color 0C
     echo [FEHLER] Die virtuelle Umgebung konnte nicht erstellt werden.
@@ -67,7 +72,7 @@ echo.
 
 :: 4. Create SQLite DB and Default Admin
 echo [4/5] Initialisiere Datenbank (warnzentrale.db)...
-python -c "import app; app.init_db()" >nul 2>&1
+"!PYTHON_EXE!" -c "import app; app.init_db()" >nul 2>&1
 echo [OK] Datenbank initialisiert (Standard-Nutzer: admin / 122).
 echo.
 
