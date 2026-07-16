@@ -83,6 +83,29 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
     });
 
+    // === 2.b Font Size Management ===
+    const fontSlider = document.getElementById('font-size-slider');
+    const fontLabel = document.getElementById('font-size-label');
+    
+    const applyFontSize = (val) => {
+        document.documentElement.style.fontSize = `${val}%`;
+        if (fontLabel) fontLabel.textContent = `${val}%`;
+        if (fontSlider && fontSlider.value != val) fontSlider.value = val;
+    };
+
+    const savedFontSize = localStorage.getItem('globalFontSize');
+    if (savedFontSize) {
+        applyFontSize(savedFontSize);
+    }
+
+    if (fontSlider) {
+        fontSlider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            applyFontSize(val);
+            localStorage.setItem('globalFontSize', val);
+        });
+    }
+
     // === 3. Map & Geocoding ===
     let map = null;
     let markers = {};
@@ -895,12 +918,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     if(assignedVehicles.length === 0) {
                         assignedList.innerHTML = '<div class="text-xs text-gray-500">Keine Fahrzeuge zugewiesen.</div>';
                     } else {
-                        assignedList.innerHTML = assignedVehicles.map(v => `
-                            <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
-                                <span class="text-sm font-bold"><i class="fa-solid fa-truck text-red-500 mr-2"></i>${v.name}</span>
-                                <button onclick="unassignVehicle(${v.id})" class="text-xs bg-red-600 text-white px-2 py-1 rounded">Abziehen</button>
-                            </div>
-                        `).join('');
+                        assignedList.innerHTML = assignedVehicles.map(v => {
+                            let equipHtml = '';
+                            if (v.equipment_list) {
+                                const items = v.equipment_list.split(',').map(i => i.trim()).filter(i => i);
+                                let state = {};
+                                try { state = JSON.parse(v.checklist_state || '{}'); } catch(e){}
+                                
+                                equipHtml = `<div class="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600 text-sm">
+                                    <div class="font-semibold mb-1 text-gray-600 dark:text-gray-400">Ausrüstungs-Checkliste:</div>
+                                    <div class="space-y-1 pl-2">
+                                        ${items.map(item => `
+                                            <label class="flex items-center space-x-2 cursor-pointer">
+                                                <input type="checkbox" onchange="toggleVehicleChecklist(${v.id}, '${item}', this.checked)" ${state[item] ? 'checked' : ''} class="rounded text-neon-green focus:ring-neon-green bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+                                                <span class="${state[item] ? 'line-through text-gray-400' : ''}">${item}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                </div>`;
+                            }
+                            
+                            return `
+                                <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 mb-2">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-md font-bold"><i class="fa-solid fa-truck text-red-500 mr-2"></i>${v.name}</span>
+                                        <button onclick="unassignVehicle(${v.id})" class="text-xs bg-red-600 hover:bg-red-500 transition-colors text-white px-3 py-1.5 rounded-lg shadow">Abziehen</button>
+                                    </div>
+                                    ${equipHtml}
+                                </div>
+                            `;
+                        }).join('');
                     }
                 }
             }
@@ -1027,7 +1074,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const data = {
                 name: document.getElementById('new-vehicle-name').value,
-                type: document.getElementById('new-vehicle-type').value
+                type: document.getElementById('new-vehicle-type').value,
+                equipment_list: document.getElementById('new-vehicle-equip').value
             };
             const res = await fetch('/api/vehicles', {
                 method: 'POST',
@@ -1090,6 +1138,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({log_text: `Fahrzeug abgezogen.`})
             });
+        }
+    };
+
+    window.toggleVehicleChecklist = async (id, item, checked) => {
+        try {
+            const res = await fetch('/api/vehicles');
+            const vehicles = await res.json();
+            const v = vehicles.find(x => x.id === id);
+            if (!v) return;
+
+            let state = {};
+            try { state = JSON.parse(v.checklist_state || '{}'); } catch(e){}
+            state[item] = checked;
+
+            await fetch(`/api/vehicles/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({checklist_state: JSON.stringify(state)})
+            });
+        } catch(e) {
+            console.error('Fehler beim Speichern der Checkliste', e);
         }
     };
 

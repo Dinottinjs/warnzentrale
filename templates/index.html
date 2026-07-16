@@ -54,7 +54,7 @@
                     <div class="text-xs text-neon-green">{{ current_role }}</div>
                     <div id="clock" class="text-xs font-mono tracking-widest text-gray-500 dark:text-gray-400">00:00:00</div>
                 </div>
-                <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-sm">
+                <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-md">
             </div>
         </div>
     </header>
@@ -94,29 +94,29 @@
             
             <!-- Host System Stats Row -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
-                    <div class="bg-blue-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-brands fa-linux text-blue-600 dark:text-blue-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex items-center">
+                    <div class="bg-blue-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i class="fa-brands fa-linux text-blue-600 dark:text-blue-400 text-xl"></i></div>
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Betriebssystem</div>
                         <div id="os-stat" class="text-sm font-bold truncate w-32" title="...">Lade...</div>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
-                    <div class="bg-purple-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-microchip text-purple-600 dark:text-purple-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex items-center">
+                    <div class="bg-purple-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i class="fa-solid fa-microchip text-purple-600 dark:text-purple-400 text-xl"></i></div>
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CPU & RAM</div>
                         <div id="cpu-ram-stat" class="text-sm font-bold">0% | 0GB</div>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
-                    <div class="bg-green-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-network-wired text-green-600 dark:text-green-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex items-center">
+                    <div class="bg-green-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i class="fa-solid fa-network-wired text-green-600 dark:text-green-400 text-xl"></i></div>
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Netzwerk IP</div>
                         <div id="ip-stat" class="text-sm font-bold">127.0.0.1</div>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
-                    <div class="bg-yellow-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-globe text-yellow-600 dark:text-yellow-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex items-center">
+                    <div class="bg-yellow-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i class="fa-solid fa-globe text-yellow-600 dark:text-yellow-400 text-xl"></i></div>
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Internet Ping</div>
                         <div id="ping-stat" class="text-sm font-bold">Prüfe...</div>
@@ -126,7 +126,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-[400px]">
                 <!-- Leaflet Map -->
-                <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+                <div class="bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden">
                     <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <h2 class="text-xl font-bold"><i class="fa-solid fa-map-location-dot mr-2 text-blue-500"></i> Live-Karte (Österreich)</h2>
                         <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm">
@@ -137,7 +137,7 @@
                 </div>
 
                 <!-- Active Events from Kumpel Software -->
-                <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+                <div class="bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden">
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center">
                         <h2 class="text-lg font-bold"><i class="fa-solid fa-tower-broadcast mr-2"></i> Verknüpfte Live-Einsätze</h2>
                         <span id="kumpel-status-badge" class="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs rounded-full font-bold">Getrennt</span>
@@ -161,14 +161,14 @@
         <div id="tab-missions" class="tab-content hidden flex-1 flex-col space-y-6 overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold"><i class="fa-solid fa-truck-fast mr-2"></i> Aktive Einsätze & Koordination</h2>
-                <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-neon-green hover:bg-green-500 text-black font-bold px-4 py-2 rounded shadow transition-colors">
+                <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-4 py-2 rounded shadow transition-colors">
                     <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
                 </button>
             </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[500px]">
                 <!-- Missions List -->
-                <div class="lg:col-span-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+                <div class="lg:col-span-1 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden">
                     <h3 class="font-bold p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">Laufende Einsätze</h3>
                     <div id="missions-list" class="flex-1 overflow-y-auto p-4 space-y-4">
                         <!-- Filled by JS -->
@@ -176,7 +176,7 @@
                 </div>
 
                 <!-- Mission Details & Logs -->
-                <div class="lg:col-span-2 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden hidden" id="mission-detail-view">
+                <div class="lg:col-span-2 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden hidden" id="mission-detail-view">
                     <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center">
                         <h3 class="font-bold text-xl" id="mission-detail-title">Einsatz Details</h3>
                         <div class="flex space-x-2">
@@ -220,14 +220,14 @@
                 </div>
                 
                 <!-- Placeholder when no mission is selected -->
-                <div class="lg:col-span-2 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col justify-center items-center text-gray-500" id="mission-detail-placeholder">
+                <div class="lg:col-span-2 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col justify-center items-center text-gray-500" id="mission-detail-placeholder">
                     <i class="fa-solid fa-truck-fast text-6xl mb-4 opacity-20"></i>
                     <p>Wähle links einen Einsatz aus oder erstelle einen neuen.</p>
                 </div>
             </div>
             
             <!-- Global Vehicles Overview -->
-            <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-4 mt-6">
+            <div class="bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-4 mt-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold"><i class="fa-solid fa-car mr-2"></i> Globale Fahrzeug-/Ausrüstungsübersicht</h3>
                     <button onclick="document.getElementById('modal-new-vehicle').classList.remove('hidden')" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded transition-colors">Fahrzeug hinzufügen</button>
@@ -251,7 +251,7 @@
 
         <!-- Modals for Missions & Vehicles -->
         <div id="modal-new-mission" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-panel-bg rounded-xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-800 shadow-2xl">
+            <div class="bg-white dark:bg-panel-bg rounded-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-800 shadow-2xl">
                 <h3 class="text-xl font-bold mb-4">Neuen Einsatz erstellen</h3>
                 <form id="new-mission-form" class="space-y-4">
                     <input type="text" id="new-mission-title" placeholder="Stichwort / Titel (z.B. Brand B4)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none" required>
@@ -265,27 +265,28 @@
 
                     <div class="flex space-x-4 pt-4">
                         <button type="button" onclick="document.getElementById('modal-new-mission').classList.add('hidden')" class="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-3 rounded text-lg font-semibold transition-colors">Abbrechen</button>
-                        <button type="submit" class="flex-1 bg-neon-green hover:bg-green-500 text-black font-bold py-3 rounded text-lg shadow-lg shadow-neon-green/30 transition-colors">Einsatz Starten</button>
+                        <button type="submit" class="flex-1 bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold py-3 rounded text-lg shadow-lg shadow-neon-green/30 transition-colors">Einsatz Starten</button>
                     </div>
                 </form>
             </div>
         </div>
 
         <div id="modal-new-vehicle" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-panel-bg rounded-xl p-6 w-full max-w-sm border border-gray-200 dark:border-gray-800 shadow-2xl">
+            <div class="bg-white dark:bg-panel-bg rounded-2xl p-6 w-full max-w-sm border border-gray-200 dark:border-gray-800 shadow-2xl">
                 <h3 class="text-xl font-bold mb-4">Neues Fahrzeug</h3>
                 <form id="new-vehicle-form" class="space-y-4">
                     <input type="text" id="new-vehicle-name" placeholder="Name (z.B. Tank 1)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none" required>
                     <input type="text" id="new-vehicle-type" placeholder="Typ (z.B. TLF 4000)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none">
+                    <textarea id="new-vehicle-equip" placeholder="Ausrüstungs-Checkliste (kommagetrennt, z.B. Schläuche, Funk)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none" rows="2"></textarea>
                     
                     <div class="flex space-x-2 pt-2">
-                        <button type="button" onclick="document.getElementById('modal-new-vehicle').classList.add('hidden')" class="flex-1 bg-gray-200 dark:bg-gray-700 py-2 rounded">Abbrechen</button>
-                        <button type="submit" class="flex-1 bg-neon-green text-black font-bold py-2 rounded">Hinzufügen</button>
+                        <button type="button" onclick="document.getElementById('modal-new-vehicle').classList.add('hidden')" class="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors py-2 rounded font-semibold">Abbrechen</button>
+                        <button type="submit" class="flex-1 bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg transition-colors text-black font-bold py-2 rounded shadow">Hinzufügen</button>
                     </div>
                 </form>
             </div>
         </div>
-        <div id="tab-link" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+        <div id="tab-link" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold mb-2"><i class="fa-solid fa-link mr-2"></i> Kumpel-System Verknüpfung</h2>
             <p class="text-gray-500 dark:text-gray-400 mb-6">Verbinde dieses Haupt-Dashboard mit dem externen Alarmdurchsage-System.</p>
             
@@ -309,7 +310,7 @@
                     <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
                         <i class="fa-solid fa-save mr-2"></i> Speichern
                     </button>
-                    <button type="button" id="btn-test-link" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                    <button type="button" id="btn-test-link" class="bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-6 py-2 rounded shadow transition-colors">
                         <i class="fa-solid fa-plug mr-2"></i> Verbindung testen & verknüpfen
                     </button>
                     <span id="link-test-result" class="text-sm font-bold ml-2"></span>
@@ -318,12 +319,12 @@
         </div>
 
         <!-- Tab Content: Rechte -->
-        <div id="tab-rights" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+        <div id="tab-rights" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Gruppen</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Group Management Form -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl">
                     <h3 class="font-bold text-lg mb-4">Neue Gruppe erstellen</h3>
                     <form id="group-form" class="space-y-4">
                         <input type="text" id="group-name" placeholder="Gruppenname (z.B. Löschzug 2)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
@@ -339,7 +340,7 @@
                 </div>
 
                 <!-- Invites -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl">
                     <h3 class="font-bold text-lg mb-4">Einladung generieren</h3>
                     <form id="invite-form" class="space-y-4">
                         <input type="email" id="invite-email" placeholder="E-Mail (optional)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
@@ -349,7 +350,7 @@
                 </div>
 
                 <!-- Existing Groups List -->
-                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl">
                     <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Gruppen</h3>
                     <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- JS injected cards -->
@@ -360,7 +361,7 @@
 
         <!-- Tab Content: DB Admin -->
         {% if current_role == 'Admin' %}
-        <div id="tab-db" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+        <div id="tab-db" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold text-red-500 mb-6"><i class="fa-solid fa-database mr-2"></i> Datenbank-Editor (Admin)</h2>
             <div class="flex space-x-2 mb-4">
                 <button class="db-select-btn px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded font-bold" data-table="users">Users</button>
@@ -369,7 +370,7 @@
             </div>
             
             <div class="overflow-x-auto">
-                <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-left">
+                <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm text-left">
                     <thead class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" id="db-thead">
                         <tr><th class="p-3">Wähle eine Tabelle aus.</th></tr>
                     </thead>
@@ -381,13 +382,13 @@
         {% endif %}
 
         <!-- Tab Content: Einstellungen (Account & System) -->
-        <div id="tab-account" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+        <div id="tab-account" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-gear mr-2"></i> Systemeinstellungen</h2>
             
             <div class="space-y-4">
                 
                 <!-- Account Section -->
-                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
                     <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-account').classList.toggle('hidden')">
                         <span>🔒 Account</span>
                         <i class="fa-solid fa-chevron-down"></i>
@@ -403,12 +404,12 @@
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Neues Passwort (optional)</label>
                                     <input type="password" id="acc-password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="Leer lassen um es nicht zu ändern">
                                 </div>
-                                <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                                <button type="submit" class="bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-6 py-2 rounded shadow transition-colors">
                                     <i class="fa-solid fa-save mr-2"></i> Profil aktualisieren
                                 </button>
                             </form>
             
-                            <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/30">
+                            <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl bg-gray-50 dark:bg-gray-900/30">
                                 <img id="preview-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
                                 
                                 <form id="avatar-form" class="flex flex-col items-center w-full">
@@ -417,7 +418,7 @@
                                         <input type="file" id="avatar-input" accept="image/png, image/jpeg" class="hidden">
                                     </label>
                                     <span id="avatar-filename" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate w-full text-center">Kein Bild ausgewählt</span>
-                                    <button type="submit" id="btn-upload-avatar" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors hidden">
+                                    <button type="submit" id="btn-upload-avatar" class="w-full bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-6 py-2 rounded shadow transition-colors hidden">
                                         <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Bild hochladen
                                     </button>
                                 </form>
@@ -426,9 +427,29 @@
                     </div>
                 </div>
 
+                <!-- Appearance Section -->
+                <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-md">
+                    <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-appearance').classList.toggle('hidden')">
+                        <span>👁️ Darstellung & Barrierefreiheit</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="acc-section-appearance" class="p-6 bg-white dark:bg-panel-bg hidden">
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 dark:text-gray-400 mb-2 flex justify-between">
+                                    <span>Globale Schriftgröße</span>
+                                    <span id="font-size-label" class="text-neon-green">100%</span>
+                                </label>
+                                <input type="range" id="font-size-slider" min="80" max="150" value="100" class="w-full h-2 bg-gray-300 rounded-2xl appearance-none cursor-pointer dark:bg-gray-700 accent-neon-green">
+                                <p class="text-xs text-gray-500 mt-2">Passe die Größe aller Texte und Elemente der WebUI an deine Bedürfnisse an. Diese Einstellung wird nur für dich auf diesem Gerät gespeichert.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Network Section -->
                 {% if current_role == 'Admin' %}
-                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
                     <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-network').classList.toggle('hidden')">
                         <span>🌐 Netzwerk & Internet</span>
                         <i class="fa-solid fa-chevron-down"></i>
@@ -460,7 +481,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <label class="cursor-pointer">
                                         <input type="radio" name="network_mode" value="lan" class="peer hidden" checked onchange="toggleWifiConfig(this.value)">
-                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
+                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
                                             <i class="fa-solid fa-network-wired text-4xl mb-2 text-gray-600 dark:text-gray-400"></i>
                                             <div class="font-bold">LAN (Kabel)</div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Empfohlener Standard</div>
@@ -468,7 +489,7 @@
                                     </label>
                                     <label class="cursor-pointer">
                                         <input type="radio" name="network_mode" value="wlan" class="peer hidden" onchange="toggleWifiConfig(this.value)">
-                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
+                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
                                             <i class="fa-solid fa-wifi text-4xl mb-2 text-gray-600 dark:text-gray-400"></i>
                                             <div class="font-bold">WLAN (Drahtlos)</div>
                                             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Flexibel, erfordert Passwort</div>
@@ -476,7 +497,7 @@
                                     </label>
                                 </div>
                                 
-                                <div id="wifi-config-container" class="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hidden">
+                                <div id="wifi-config-container" class="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 hidden">
                                     <h4 class="font-bold mb-4">📡 WLAN Einstellungen</h4>
                                     <div class="space-y-4">
                                         <div>
@@ -494,7 +515,7 @@
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">WLAN Passwort</label>
                                             <input type="password" id="wifi-password" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
                                         </div>
-                                        <button type="button" id="btn-connect-wifi" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                                        <button type="button" id="btn-connect-wifi" class="w-full bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-6 py-2 rounded shadow transition-colors">
                                             <i class="fa-solid fa-wifi mr-2"></i> Mit WLAN verbinden
                                         </button>
                                     </div>
@@ -514,37 +535,37 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Systemsteuerung -->
-                <div class="bg-white dark:bg-panel-bg p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                <div class="bg-white dark:bg-panel-bg p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md">
                     <h3 class="text-xl font-bold mb-4 text-purple-500 dark:text-purple-400"><i class="fa-solid fa-server mr-2"></i> Systemsteuerung</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Verwalte den Status des Dashboards direkt. Ein Neustart übernimmt Konfigurationsänderungen.</p>
                     <div class="flex space-x-4">
-                        <button id="btn-system-restart" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-bold transition-all shadow-lg hover:shadow-yellow-500/50">
+                        <button id="btn-system-restart" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-bold transition-all shadow-lg hover:shadow-yellow-500/50">
                             <i class="fa-solid fa-rotate-right mr-2"></i> System Neustarten
                         </button>
-                        <button id="btn-system-shutdown" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-all shadow-lg hover:shadow-red-600/50">
+                        <button id="btn-system-shutdown" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold transition-all shadow-lg hover:shadow-red-600/50">
                             <i class="fa-solid fa-power-off mr-2"></i> System Herunterfahren
                         </button>
                     </div>
                 </div>
 
                 <!-- Live Logs -->
-                <div class="bg-white dark:bg-panel-bg p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col h-64">
+                <div class="bg-white dark:bg-panel-bg p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col h-64">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100"><i class="fa-solid fa-file-code mr-2"></i> Live System Logs (JSON)</h3>
                         <button id="btn-refresh-logs" class="text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-sync"></i></button>
                     </div>
-                    <div id="log-viewer" class="flex-1 bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-lg overflow-y-auto whitespace-pre-wrap shadow-inner">
+                    <div id="log-viewer" class="flex-1 bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-2xl overflow-y-auto whitespace-pre-wrap shadow-inner">
                         Lade Logs...
                     </div>
                 </div>
             </div>
 
             <!-- Rechte Matrix (ZeNmOdZ Design) -->
-            <div class="bg-white dark:bg-panel-bg p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div class="bg-white dark:bg-panel-bg p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md">
                 <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-gray-100"><i class="fa-solid fa-sliders mr-2"></i> Rang-Berechtigungen (Matrix)</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Benutze die Schalter, um Rechte dynamisch per LiveSocket anzupassen: <span class="text-green-500 font-bold">Grün (Erlaubt)</span> | <span class="text-gray-500 font-bold">Grau (Verboten)</span></p>
                 
-                <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700">
                     <table class="w-full text-center border-collapse">
                         <thead class="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                             <tr id="perm-matrix-head">

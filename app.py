@@ -168,6 +168,8 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         type TEXT,
+        equipment_list TEXT,
+        checklist_state TEXT,
         status TEXT DEFAULT 'available',
         current_mission_id INTEGER,
         FOREIGN KEY(current_mission_id) REFERENCES missions(id)
@@ -565,8 +567,8 @@ def api_vehicles():
         return jsonify([dict(r) for r in rows])
     elif request.method == 'POST':
         data = request.json
-        conn.execute("INSERT INTO vehicles (name, type, status) VALUES (?, ?, ?)", 
-                     (data['name'], data.get('type',''), data.get('status','available')))
+        conn.execute("INSERT INTO vehicles (name, type, equipment_list, checklist_state, status) VALUES (?, ?, ?, ?, ?)", 
+                     (data['name'], data.get('type',''), data.get('equipment_list',''), '{}', data.get('status','available')))
         conn.commit()
         conn.close()
         socketio.emit('vehicles_update', broadcast=True)
@@ -584,8 +586,8 @@ def api_vehicle_detail(vehicle_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
-        conn.execute("UPDATE vehicles SET name = ?, type = ?, status = ?, current_mission_id = ? WHERE id = ?", 
-                     (data.get('name'), data.get('type'), data.get('status'), data.get('current_mission_id'), vehicle_id))
+        conn.execute("UPDATE vehicles SET name = COALESCE(?, name), type = COALESCE(?, type), equipment_list = COALESCE(?, equipment_list), checklist_state = COALESCE(?, checklist_state), status = COALESCE(?, status), current_mission_id = COALESCE(?, current_mission_id) WHERE id = ?", 
+                     (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
         conn.commit()
         conn.close()
         socketio.emit('vehicles_update', broadcast=True)
