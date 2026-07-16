@@ -9,26 +9,30 @@ echo.
 :: 1. Check Python and Git (Winget)
 echo [1/5] Pruefe und installiere ggf. Python via Winget...
 set "PYTHON_JUST_INSTALLED=0"
+
 winget --version >nul 2>&1
-if %errorlevel% equ 0 (
-    python --version >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo Installiere Python 3...
-        winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
-        set "PYTHON_JUST_INSTALLED=1"
-    )
-) else (
-    echo [WARNUNG] Winget nicht gefunden. Ueberpruefe Python manuell.
-)
+if %errorlevel% neq 0 goto :skip_winget
+
+python --version >nul 2>&1
+if %errorlevel% equ 0 goto :python_installed
+
+echo Installiere Python 3...
+winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
+set "PYTHON_JUST_INSTALLED=1"
+
+:skip_winget
+:python_installed
 
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     color 0C
     if "!PYTHON_JUST_INSTALLED!"=="1" (
-        echo [HINWEIS] Python wurde erfolgreich installiert, aber die Konsole muss neu gestartet werden.
-        echo Bitte schliesse dieses Fenster und starte 'install.bat' erneut!
+        echo [HINWEIS] Python wurde erfolgreich ueber Winget bezogen!
+        echo Die Konsole muss nun neu gestartet werden, damit die neuen Pfade geladen werden.
+        echo Bitte schliesse dieses Fenster komplett und starte 'install.bat' danach erneut.
     ) else (
-        echo [FEHLER] Python wurde nicht gefunden! Bitte installiere Python 3 manuell.
+        echo [FEHLER] Python wurde nicht gefunden und konnte nicht installiert werden.
+        echo Bitte lade dir Python 3 manuell von python.org herunter und installiere es!
     )
     pause
     exit /b 1
