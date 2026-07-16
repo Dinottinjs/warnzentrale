@@ -827,7 +827,7 @@ def api_users():
                      (username, first_name, last_name, pwd_hash, 3, group_id, invite_token))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('users_update')
         return jsonify({
             "success": True, 
             "username": username,
@@ -843,7 +843,7 @@ def manage_user(user_id):
         conn.commit()
         conn.close()
         logger.info(f"User ID {user_id} deleted.")
-        socketio.emit()
+        socketio.emit('users_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -851,7 +851,7 @@ def manage_user(user_id):
                      (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), user_id))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('users_update')
         return jsonify({"success": True})
 
 @app.route('/api/users/me/permissions', methods=['GET'])
@@ -877,7 +877,7 @@ def update_user_group_id(user_id):
     conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (new_group_id, user_id))
     conn.commit()
     conn.close()
-    socketio.emit()
+    socketio.emit('users_update')
     return jsonify({"success": True})
 
 @app.route('/api/invitations', methods=['POST'])
@@ -892,7 +892,7 @@ def create_invitation():
     conn.commit()
     conn.close()
     logger.info(f"Invitation created.")
-    socketio.emit()
+    socketio.emit('users_update')
     return jsonify({"success": True, "token": token})
 
 # --- Socket.IO Handlers (Group Owner / Admin) ---

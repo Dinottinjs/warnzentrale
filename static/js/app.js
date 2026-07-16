@@ -54,6 +54,34 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     initPermissionsUI();
 
+    // Load groups into the new-mission dropdown (runs on page load and on modal open)
+    const loadGroupsForMissionModal = async () => {
+        const sel = document.getElementById('new-mission-group');
+        if (!sel) return;
+        try {
+            const res = await fetch('/api/groups');
+            if (!res.ok) return;
+            const groups = await res.json();
+            if (!Array.isArray(groups) || groups.length === 0) {
+                sel.innerHTML = '<option value="">Keine Gruppen vorhanden</option>';
+                return;
+            }
+            sel.innerHTML = groups.map(g =>
+                `<option value="${g.id}" data-color="${g.color || '#e11d48'}">${g.group_name}</option>`
+            ).join('');
+        } catch (e) {
+            console.error('Gruppen konnten nicht geladen werden', e);
+        }
+    };
+    loadGroupsForMissionModal(); // pre-load on page ready
+
+    // Also reload every time ANY "Neuer Einsatz" button opens the modal
+    document.addEventListener('click', (e) => {
+        if (e.target.closest && e.target.closest('[onclick*="modal-new-mission"]')) {
+            loadGroupsForMissionModal();
+        }
+    });
+
     // Tab Navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');

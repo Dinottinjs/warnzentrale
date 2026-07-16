@@ -79,7 +79,7 @@
                 <i class="fa-solid fa-link mx-2"></i> System-Link
             </button>
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap hidden" data-tab="rights" data-req-perm="manage_users,manage_roles">
-                <i class="fa-solid fa-users-gear mx-2"></i> Mitglieder & Rechte
+                <i class="fa-solid fa-users-gear mx-2"></i> Mitglieder & Gruppen
             </button>
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
                 <i class="fa-solid fa-gear mx-2"></i> Einstellungen
@@ -351,7 +351,9 @@
                     
                     <div>
                         <label class="block text-sm text-gray-500 mb-1">Zuständige Gruppe</label>
-                        <select id="new-mission-group" class="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none"></select>
+                        <select id="new-mission-group" class="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none">
+                            <option value="">Lade Gruppen...</option>
+                        </select>
                     </div>
 
                     <div class="flex space-x-4 pt-4">
