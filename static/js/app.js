@@ -602,6 +602,124 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const loadSystemConfig = async () => {
+        try {
+            const res = await fetch('/api/db/settings');
+            const data = await res.json();
+            
+            let port = 5000, domain = '', mode = 'lan', ssid = '';
+            data.forEach(item => {
+                if(item.key === 'port') port = item.value;
+                if(item.key === 'local_domain') domain = item.value;
+                if(item.key === 'network_mode') mode = item.value;
+                if(item.key === 'wifi_ssid') ssid = item.value;
+            });
+            
+            const sysPort = document.getElementById('sys-port');
+            const sysDomain = document.getElementById('sys-domain');
+            if(sysPort) sysPort.value = port;
+            if(sysDomain) sysDomain.value = domain;
+            
+            // Set radio button and toggle config
+            const modeRadios = document.getElementsByName('network_mode');
+            if(modeRadios.length > 0) {
+                modeRadios.forEach(r => {
+                    if(r.value === mode) r.checked = true;
+                });
+                toggleWifiConfig(mode);
+            }
+        } catch(e) {}
+    };
+
+    window.toggleWifiConfig = (mode) => {
+        const container = document.getElementById('wifi-config-container');
+        if(!container) return;
+        if(mode === 'wlan') container.classList.remove('hidden');
+        else container.classList.add('hidden');
+    };
+
+    const networkForm = document.getElementById('network-form');
+    if(networkForm) {
+        networkForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const mode = document.querySelector('input[name="network_mode"]:checked').value;
+            const data = {
+                port: document.getElementById('sys-port').value,
+                local_domain: document.getElementById('sys-domain').value,
+                network_mode: mode
+            };
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if(res.ok) {
+                    showToast('Systemkonfiguration gespeichert.', 'success');
+                    alert('Falls du den Port geändert hast, musst du das Backend (via Systemsteuerung oder Konsole) neu starten, damit die Änderung wirksam wird.');
+                }
+            } catch(e) {
+                showToast('Fehler beim Speichern', 'error');
+            }
+        });
+    }
+
+    const btnScanWifi = document.getElementById('btn-scan-wifi');
+    if(btnScanWifi) {
+        btnScanWifi.addEventListener('click', async () => {
+            btnScanWifi.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Suche...';
+            try {
+                const res = await fetch('/api/network/wifi/scan');
+                const data = await res.json();
+                const select = document.getElementById('wifi-ssid');
+                select.innerHTML = '';
+                if(data.networks && data.networks.length > 0) {
+                    data.networks.forEach(n => {
+                        select.innerHTML += `<option value="${n}">${n}</option>`;
+                    });
+                } else {
+                    select.innerHTML = '<option value="">Keine Netzwerke gefunden</option>';
+                }
+            } catch(e) {
+                showToast('Fehler beim WLAN Scan', 'error');
+            }
+            btnScanWifi.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Suchen';
+        });
+    }
+
+    const btnConnectWifi = document.getElementById('btn-connect-wifi');
+    if(btnConnectWifi) {
+        btnConnectWifi.addEventListener('click', async () => {
+            const ssid = document.getElementById('wifi-ssid').value;
+            const password = document.getElementById('wifi-password').value;
+            if(!ssid) return alert("Bitte wähle ein Netzwerk aus.");
+            
+            btnConnectWifi.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Verbinde...';
+            try {
+                const res = await fetch('/api/network/wifi/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ssid, password})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showToast(data.msg, 'success');
+                    // Save SSID to settings
+                    await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({wifi_ssid: ssid})
+                    });
+                } else {
+                    showToast(data.error || 'Verbindung fehlgeschlagen', 'error');
+                }
+            } catch(e) {
+                showToast('Netzwerkfehler', 'error');
+            }
+            btnConnectWifi.innerHTML = '<i class="fa-solid fa-wifi mr-2"></i> Mit WLAN verbinden';
+        });
+    }
+
     // === 6. Init ===
     const localTheme = localStorage.getItem('theme');
     if (localTheme) applyTheme(localTheme);
@@ -609,5 +727,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     loadKumpelConfig();
     loadAccountConfig();
+    loadSystemConfig();
     startPolling();
 });

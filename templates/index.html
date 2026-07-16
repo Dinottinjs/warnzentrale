@@ -35,7 +35,7 @@
     <header class="bg-white dark:bg-panel-bg border-b border-gray-300 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-md">
         <div class="flex items-center space-x-4">
             <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center">
-                <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mr-3"></i> Warnzentrale
+                🚒 <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mx-3"></i> Warnzentrale
             </h1>
         </div>
         
@@ -65,23 +65,23 @@
         <!-- Tabs -->
         <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
             <button class="tab-btn active px-6 py-2 bg-white dark:bg-panel-bg rounded-t-lg border-b-2 border-neon-green font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
-                <i class="fa-solid fa-desktop mr-2"></i> Dashboard
+                🏠 <i class="fa-solid fa-desktop mx-1"></i> Dashboard
             </button>
             <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="link">
-                <i class="fa-solid fa-link mr-2"></i> Kumpel-Verknüpfung
+                🔗 <i class="fa-solid fa-link mx-1"></i> Kumpel-Verknüpfung
             </button>
             <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="rights">
-                <i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Rechte
+                👥 <i class="fa-solid fa-users-gear mx-1"></i> Mitglieder & Rechte
             </button>
             <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
-                <i class="fa-solid fa-user-gear mr-2"></i> Account
+                ⚙️ <i class="fa-solid fa-gear mx-1"></i> Einstellungen
             </button>
             {% if current_role == 'Admin' %}
             <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap" data-tab="db">
-                <i class="fa-solid fa-database mr-2"></i> Datenbank-Management
+                🗄️ <i class="fa-solid fa-database mx-1"></i> Datenbank-Management
             </button>
             <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);">
-                <i class="fa-solid fa-crown mr-2"></i> Gruppenbesitzer
+                👑 <i class="fa-solid fa-crown mx-1"></i> Gruppenbesitzer
             </button>
             {% endif %}
         </div>
@@ -231,40 +231,132 @@
         </div>
         {% endif %}
 
-        <!-- Tab Content: Account Settings -->
+        <!-- Tab Content: Einstellungen (Account & System) -->
         <div id="tab-account" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-user-gear mr-2"></i> Account Einstellungen</h2>
+            <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-gear mr-2"></i> Systemeinstellungen</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <form id="account-form" class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Anzeigename</label>
-                        <input type="text" id="acc-name" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Neues Passwort (optional)</label>
-                        <input type="password" id="acc-password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="Leer lassen um es nicht zu ändern">
-                    </div>
-                    
-                    <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
-                        <i class="fa-solid fa-save mr-2"></i> Profil aktualisieren
+            <div class="space-y-4">
+                
+                <!-- Account Section -->
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-account').classList.toggle('hidden')">
+                        <span>🔒 Account</span>
+                        <i class="fa-solid fa-chevron-down"></i>
                     </button>
-                </form>
-
-                <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/30">
-                    <img id="preview-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
-                    
-                    <form id="avatar-form" class="flex flex-col items-center w-full">
-                        <label class="block w-full cursor-pointer bg-gray-800 hover:bg-black text-white dark:bg-gray-800 dark:hover:bg-gray-700 text-center py-2 rounded shadow transition-colors mb-2">
-                            <i class="fa-solid fa-upload mr-2"></i> Neues Bild auswählen
-                            <input type="file" id="avatar-input" accept="image/png, image/jpeg" class="hidden">
-                        </label>
-                        <span id="avatar-filename" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate w-full text-center">Kein Bild ausgewählt</span>
-                        <button type="submit" id="btn-upload-avatar" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors hidden">
-                            <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Bild hochladen
-                        </button>
-                    </form>
+                    <div id="acc-section-account" class="p-6 bg-white dark:bg-panel-bg hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <form id="account-form" class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Anzeigename</label>
+                                    <input type="text" id="acc-name" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Neues Passwort (optional)</label>
+                                    <input type="password" id="acc-password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="Leer lassen um es nicht zu ändern">
+                                </div>
+                                <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                                    <i class="fa-solid fa-save mr-2"></i> Profil aktualisieren
+                                </button>
+                            </form>
+            
+                            <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/30">
+                                <img id="preview-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
+                                
+                                <form id="avatar-form" class="flex flex-col items-center w-full">
+                                    <label class="block w-full cursor-pointer bg-gray-800 hover:bg-black text-white dark:bg-gray-800 dark:hover:bg-gray-700 text-center py-2 rounded shadow transition-colors mb-2">
+                                        <i class="fa-solid fa-upload mr-2"></i> Neues Bild auswählen
+                                        <input type="file" id="avatar-input" accept="image/png, image/jpeg" class="hidden">
+                                    </label>
+                                    <span id="avatar-filename" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate w-full text-center">Kein Bild ausgewählt</span>
+                                    <button type="submit" id="btn-upload-avatar" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors hidden">
+                                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Bild hochladen
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Network Section -->
+                {% if current_role == 'Admin' %}
+                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-network').classList.toggle('hidden')">
+                        <span>🌐 Netzwerk & Internet</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="acc-section-network" class="p-6 bg-white dark:bg-panel-bg hidden">
+                        
+                        <form id="network-form" class="space-y-8">
+                            <!-- Basic Network Config -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-gray-200 dark:border-gray-800">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Webserver Port</label>
+                                    <input type="number" id="sys-port" value="5000" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                                    <p class="text-xs text-gray-500 mt-1">Ein Neustart ist erforderlich bei Änderung.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Lokale Domain (z.B. zentrale.local)</label>
+                                    <input type="text" id="sys-domain" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
+                                        <i class="fa-solid fa-save mr-2"></i> Konfiguration speichern
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- WLAN / LAN Selector -->
+                            <div>
+                                <h3 class="text-lg font-bold mb-4">Verbindungsmodus</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="network_mode" value="lan" class="peer hidden" checked onchange="toggleWifiConfig(this.value)">
+                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
+                                            <i class="fa-solid fa-network-wired text-4xl mb-2 text-gray-600 dark:text-gray-400"></i>
+                                            <div class="font-bold">LAN (Kabel)</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Empfohlener Standard</div>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="network_mode" value="wlan" class="peer hidden" onchange="toggleWifiConfig(this.value)">
+                                        <div class="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center peer-checked:border-neon-green peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 transition-all">
+                                            <i class="fa-solid fa-wifi text-4xl mb-2 text-gray-600 dark:text-gray-400"></i>
+                                            <div class="font-bold">WLAN (Drahtlos)</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Flexibel, erfordert Passwort</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                
+                                <div id="wifi-config-container" class="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 hidden">
+                                    <h4 class="font-bold mb-4">📡 WLAN Einstellungen</h4>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
+                                                Verfügbare Netzwerke
+                                                <button type="button" id="btn-scan-wifi" class="ml-2 text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                                    <i class="fa-solid fa-rotate mr-1"></i> Suchen
+                                                </button>
+                                            </label>
+                                            <select id="wifi-ssid" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                                                <option value="">Bitte zuerst suchen...</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">WLAN Passwort</label>
+                                            <input type="password" id="wifi-password" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                                        </div>
+                                        <button type="button" id="btn-connect-wifi" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                                            <i class="fa-solid fa-wifi mr-2"></i> Mit WLAN verbinden
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+                {% endif %}
+                
             </div>
         </div>
 

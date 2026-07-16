@@ -122,6 +122,10 @@ def init_db():
         c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_ip', '127.0.0.1')")
         c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_port', '8122')")
         c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_password', '122')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('port', '5000')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('local_domain', '')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('network_mode', 'lan')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('wifi_ssid', '')")
         
     conn.commit()
     conn.close()
@@ -369,7 +373,7 @@ def kumpel_proxy(subpath):
 @app.route('/api/db/<table>', methods=['GET'])
 @admin_required
 def get_table(table):
-    if table not in ['users', 'roles', 'groups', 'invitations']:
+    if table not in ['users', 'roles', 'groups', 'invitations', 'settings']:
         return jsonify({"error": "Invalid table"}), 400
     conn = get_db()
     rows = conn.execute(f"SELECT * FROM {table}").fetchall()
@@ -463,6 +467,115 @@ def handle_update_permissions(data):
         # Broadcast the change to all connected clients
         emit('permissions_updated', {"role_id": role_id, "permissions": new_perms}, broadcast=True)
 
+@app.route('/api/settings', methods=['POST'])
+@admin_required
+def update_settings():
+    data = request.json
+    conn = get_db()
+    for key, value in data.items():
+        # Insert or replace setting
+        conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+    conn.close()
+    
+    # Optional: apply local domain logic if it changed
+    local_domain = data.get('local_domain')
+    if local_domain:
+        # Simplistic approach: Just log it. Real mDNS/hosts file mapping is OS-specific and requires admin rights.
+        logger.info(f"Local domain set to {local_domain}. Please configure your DNS or Hosts file accordingly.")
+
+    return jsonify({"success": True})
+
+@app.route('/api/network/wifi/scan', methods=['GET'])
+@admin_required
+def api_wifi_scan():
+    try:
+        if platform.system() == "Windows":
+            result = subprocess.check_output(['netsh', 'wlan', 'show', 'networks'], shell=True, text=True, encoding='cp850', errors='ignore')
+            networks = []
+            for line in result.split('\n'):
+                if "SSID" in line and "BSSID" not in line:
+                    parts = line.split(':')
+                    if len(parts) > 1:
+                        ssid = parts[1].strip()
+                        if ssid and ssid not in networks:
+                            networks.append(ssid)
+            return jsonify({"networks": networks})
+        else:
+            result = subprocess.check_output(['nmcli', '-t', '-f', 'SSID', 'dev', 'wifi'], text=True)
+            networks = [line.strip() for line in result.split('\n') if line.strip()]
+            return jsonify({"networks": list(set(networks))})
+    except Exception as e:
+        logger.error(f"Wifi scan failed: {e}")
+        return jsonify({"networks": [], "error": str(e)})
+
+@app.route('/api/network/wifi/connect', methods=['POST'])
+@admin_required
+def api_wifi_connect():
+    data = request.json
+    ssid = data.get('ssid')
+    password = data.get('password')
+    if not ssid:
+        return jsonify({"success": False, "error": "SSID required"})
+    
+    try:
+        if platform.system() == "Windows":
+            # XML Escape um Fehler bei Sonderzeichen (&, <, >) im WLAN-Namen oder Passwort zu verhindern
+            xml_ssid = ssid.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            xml_pass = password.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            
+            profile_xml = f"""<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+    <name>{xml_ssid}</name>
+    <SSIDConfig>
+        <SSID>
+            <name>{xml_ssid}</name>
+        </SSID>
+    </SSIDConfig>
+    <connectionType>ESS</connectionType>
+    <connectionMode>auto</connectionMode>
+    <MSM>
+        <security>
+            <authEncryption>
+                <authentication>WPA2PSK</authentication>
+                <encryption>AES</encryption>
+                <useOneX>false</useOneX>
+            </authEncryption>
+            <sharedKey>
+                <keyType>passPhrase</keyType>
+                <protected>false</protected>
+                <keyMaterial>{xml_pass}</keyMaterial>
+            </sharedKey>
+        </security>
+    </MSM>
+</WLANProfile>"""
+            profile_path = "temp_wifi_profile.xml"
+            with open(profile_path, "w", encoding="utf-8") as f:
+                f.write(profile_xml)
+                
+            res_add = subprocess.run(['netsh', 'wlan', 'add', 'profile', f'filename={profile_path}'], capture_output=True, text=True, encoding='cp850', errors='ignore')
+            res_conn = subprocess.run(['netsh', 'wlan', 'connect', f'name={ssid}'], capture_output=True, text=True, encoding='cp850', errors='ignore')
+            
+            if os.path.exists(profile_path):
+                os.remove(profile_path)
+                
+            if res_conn.returncode == 0:
+                return jsonify({"success": True, "msg": f"Mit {ssid} verbunden"})
+            else:
+                return jsonify({"success": False, "error": res_conn.stderr or res_conn.stdout})
+        else:
+            # Linux nmcli
+            subprocess.check_call(['nmcli', 'radio', 'wifi', 'on'])
+            cmd = ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode == 0:
+                return jsonify({"success": True, "msg": f"Mit {ssid} verbunden"})
+            else:
+                return jsonify({"success": False, "error": res.stderr})
+    except Exception as e:
+        logger.error(f"Wifi connect error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
 # --- Direct User Context injection ---
 @app.context_processor
 def inject_user():
@@ -478,5 +591,13 @@ def inject_user():
     return dict(current_user=user, current_role=role)
 
 if __name__ == '__main__':
+    # Fetch port from db
+    conn = get_db()
+    port_row = conn.execute("SELECT value FROM settings WHERE key = 'port'").fetchone()
+    conn.close()
+    run_port = 8080
+    if port_row and port_row['value'].isdigit():
+        run_port = int(port_row['value'])
+    
     # Use socketio.run instead of app.run
-    socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=run_port, debug=True, allow_unsafe_werkzeug=True)
