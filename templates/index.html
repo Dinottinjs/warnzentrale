@@ -66,74 +66,6 @@
         <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
             <button class="tab-btn active px-6 py-3 glass-panel rounded-t-lg border-b-2 border-neon-green text-lg font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
                 <i class="fa-solid fa-desktop mx-2"></i> Dashboard
-<!DOCTYPE html>
-<html lang="de" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feuerwehr Haupt-Dashboard</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        'dark-bg': '#0a0a0a',
-                        'panel-bg': '#1a1a1a',
-                        'neon-green': '#22c55e',
-                        'fire-red': '#e11d48'
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Socket.IO -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
-
-    <!-- Header -->
-    <header class="glass-panel border-b border-gray-300 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-md">
-        <div class="flex items-center space-x-4">
-            <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center">
-                🚒 <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mx-3"></i> Warnzentrale
-            </h1>
-        </div>
-        
-        <div class="flex items-center space-x-6">
-            <a href="/logout" class="text-sm text-red-500 hover:text-red-700 transition-colors"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-            <!-- Theme Toggle -->
-            <button id="theme-toggle" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
-                <i class="fa-solid fa-moon text-xl dark:hidden"></i>
-                <i class="fa-solid fa-sun text-xl hidden dark:block"></i>
-            </button>
-
-            <!-- User Info -->
-            <div class="flex items-center space-x-3">
-                <div class="text-right">
-                    <div id="header-user-name" class="font-bold text-sm">{{ current_user }}</div>
-                    <div id="header-user-role" class="text-xs text-neon-green">{{ current_role }}</div>
-                    <div id="clock" class="text-xs font-mono tracking-widest text-gray-500 dark:text-gray-400">00:00:00</div>
-                </div>
-                <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-md">
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col p-6 overflow-hidden">
-        
-        <!-- Tabs -->
-        <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
-            <button class="tab-btn active px-6 py-3 glass-panel rounded-t-lg border-b-2 border-neon-green text-lg font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
-                <i class="fa-solid fa-desktop mx-2"></i> Dashboard
             </button>
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="missions">
                 <i class="fa-solid fa-truck-fast mx-2"></i> Einsätze
@@ -142,17 +74,15 @@
                 <i class="fa-solid fa-link mx-2"></i> System-Link
             </button>
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap hidden" data-tab="rights" data-req-perm="manage_users,manage_roles">
-                <i class="fa-solid fa-users-gear mx-2 text-neon-green"></i> Mitglieder & Rechte
+                <i class="fa-solid fa-users-gear mx-2"></i> Mitglieder & Rechte
             </button>
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
-                <i class="fa-solid fa-gear mx-2 text-neon-green"></i> Einstellungen
+                <i class="fa-solid fa-gear mx-2"></i> Einstellungen
             </button>
-            
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap hidden" data-tab="db" data-req-perm="manage_settings">
                 <i class="fa-solid fa-database mx-2"></i> Datenbank
             </button>
-            
-            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap hidden" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.8);" data-req-perm="manage_system">
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap hidden" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);" data-req-perm="manage_system">
                 <i class="fa-solid fa-crown mx-2"></i> Systemsteuerung
             </button>
         </div>
@@ -372,7 +302,7 @@
             <div class="glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-4 mt-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold"><i class="fa-solid fa-car mr-2"></i> Globale Fahrzeug-/Ausrüstungsübersicht</h3>
-                    <button onclick="document.getElementById('modal-new-vehicle').classList.remove('hidden')" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded transition-colors btn-glow">Fahrzeug hinzufügen</button>
+                    <button onclick="document.getElementById('modal-new-vehicle').classList.remove('hidden')" class="btn-glow bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded transition-colors">Fahrzeug hinzufügen</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
@@ -461,12 +391,15 @@
                     <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
                         <i class="fa-solid fa-save mr-2"></i> Speichern
                     </button>
-                    <button type="button" id="btn-test-link" class="btn-glow bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                    <button type="button" id="btn-test-link" class="btn-glow bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 text-black font-bold px-6 py-2 rounded shadow transition-colors">
                         <i class="fa-solid fa-plug mr-2"></i> Verbindung testen & verknüpfen
                     </button>
                     <span id="link-test-result" class="text-sm font-bold ml-2"></span>
                 </div>
             </form>
+            <footer class="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400">
+                &copy; ZenModZ Interface v1.0.4 | Powered by AlarmMonitor Core
+            </footer>
         </div>
 
         <!-- Tab Content: Rechte -->
@@ -514,6 +447,7 @@
         </div>
 
         <!-- Tab Content: DB Admin -->
+        {% if current_role == 'Admin' %}
         <div id="tab-db" class="tab-content hidden flex-1 glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold text-red-500 mb-6"><i class="fa-solid fa-database mr-2"></i> Datenbank-Editor (Admin)</h2>
             <div class="flex space-x-2 mb-4">
@@ -532,6 +466,7 @@
                 </table>
             </div>
         </div>
+        {% endif %}
 
         <!-- Tab Content: Einstellungen (Account & System) -->
         <div id="tab-account" class="tab-content hidden flex-1 glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
@@ -750,10 +685,6 @@
         window.currentRole = "{{ current_role }}";
         window.currentGroupId = {{ current_group_id if current_group_id else 'null' }};
     </script>
-    <!-- Init Initial Permissions Script -->
-    <script>
-        window.CURRENT_PERMISSIONS = {{ user_perms | tojson | safe }};
-    </script>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="/static/js/app.js"></script>
 </body>
 </html>
