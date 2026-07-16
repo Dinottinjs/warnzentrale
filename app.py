@@ -568,11 +568,12 @@ def account():
         if "password" in data and data["password"]:
             pwd_hash = generate_password_hash(data["password"])
             conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pwd_hash, session['user_id']))
-            logger.info(f"User {session['username']} changed their password.")
+            logger.info(f"Benutzer '{session['username']}' hat sein Passwort geändert.")
         if "theme" in data:
             conn.execute("UPDATE users SET theme = ? WHERE id = ?", (data["theme"], session['user_id']))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat sein Profil aktualisiert.")
         return jsonify({"success": True})
     
     user = conn.execute("SELECT username, email, profile_picture_path as avatar, theme FROM users WHERE id = ?", (session['user_id'],)).fetchone()
@@ -606,7 +607,7 @@ def upload_avatar():
         conn.commit()
         conn.close()
         
-        logger.info(f"User {session['username']} updated avatar.")
+        logger.info(f"Benutzer '{session['username']}' hat sein Profilbild (Avatar) aktualisiert.")
         return jsonify({"success": True, "filename": filename})
     except Exception as e:
         return jsonify({"error": "Invalid image"}), 400
@@ -618,7 +619,7 @@ def api_system_security():
         data = request.json
         if "maintenance_mode" in data: set_setting('maintenance_mode', data['maintenance_mode'])
         if "session_timeout" in data: set_setting('session_timeout', data['session_timeout'])
-        logger.info(f"Admin updated security settings.")
+        logger.info(f"Benutzer '{session.get('username')}' hat die Sicherheitseinstellungen aktualisiert.")
         return jsonify({"success": True})
     return jsonify({
         "maintenance_mode": get_setting("maintenance_mode", "0"),
@@ -663,7 +664,7 @@ def kumpel_config():
         if "ip" in data: set_setting('kumpel_ip', data['ip'])
         if "port" in data: set_setting('kumpel_port', data['port'])
         if "password" in data: set_setting('kumpel_password', data['password'])
-        logger.info(f"Admin updated Kumpel API config.")
+        logger.info(f"Benutzer '{session.get('username')}' hat die Kumpel API Konfiguration aktualisiert.")
         return jsonify({"success": True})
     return jsonify({
         "ip": get_setting("kumpel_ip"),
@@ -731,7 +732,7 @@ def add_group():
     try:
         conn.execute("INSERT INTO groups (group_name, description, color) VALUES (?, ?, ?)", (data['group_name'], data.get('description',''), data.get('color', '#e11d48')))
         conn.commit()
-        logger.info(f"Group created: {data['group_name']}")
+        logger.info(f"Benutzer '{session.get('username')}' hat die Gruppe '{data['group_name']}' erstellt.")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -747,12 +748,14 @@ def manage_group(group_id):
             conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
             conn.execute("UPDATE users SET group_id = NULL WHERE group_id = ?", (group_id,))
             conn.commit()
+            logger.info(f"Benutzer '{session.get('username')}' hat die Gruppe (ID: {group_id}) gelöscht.")
             return jsonify({"success": True})
         elif request.method == 'PUT':
             data = request.json
             conn.execute("UPDATE groups SET group_name = ?, description = ?, color = ? WHERE id = ?", 
                          (data['group_name'], data.get('description',''), data.get('color', '#e11d48'), group_id))
             conn.commit()
+            logger.info(f"Benutzer '{session.get('username')}' hat die Gruppe '{data['group_name']}' bearbeitet.")
             return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -767,6 +770,7 @@ def update_user_group(user_id):
     try:
         conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (data.get('group_id'), user_id))
         conn.commit()
+        logger.info(f"Benutzer '{session.get('username')}' hat die Gruppenzuweisung von Mitglied-ID {user_id} geändert.")
         socketio.emit('users_update')
         return jsonify({"success": True})
     except Exception as e:
@@ -941,10 +945,11 @@ def manage_user(user_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
-        conn.execute("UPDATE users SET username = COALESCE(?, username), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), group_id = COALESCE(?, group_id) WHERE id = ?", 
-                     (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), user_id))
+        conn.execute("UPDATE users SET username = COALESCE(?, username), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), group_id = COALESCE(?, group_id), role_id = COALESCE(?, role_id) WHERE id = ?", 
+                     (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), data.get('role_id'), user_id))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat die Daten von Mitglied-ID {user_id} aktualisiert.")
         socketio.emit('users_update')
         return jsonify({"success": True})
 
@@ -985,7 +990,7 @@ def create_invitation():
                  (data.get('email',''), token, data.get('role_id',3), data.get('group_id',1)))
     conn.commit()
     conn.close()
-    logger.info(f"Invitation created.")
+    logger.info(f"Benutzer '{session.get('username')}' hat ein neues Mitglied (Email: {data.get('email', 'Keine')}) erstellt.")
     socketio.emit('users_update')
     return jsonify({"success": True, "token": token})
 
@@ -1032,7 +1037,7 @@ def handle_update_permissions(data):
         conn.execute("UPDATE roles SET permissions = ? WHERE id = ?", (json.dumps(new_perms), role_id))
         conn.commit()
         conn.close()
-        logger.info(f"Admin updated permissions for role_id {role_id}.")
+        logger.info(f"Benutzer '{session.get('username')}' hat die Berechtigungen für Rolle (ID: {role_id}) aktualisiert.")
         
         # Broadcast the change to all connected clients
         emit('permissions_updated', {"role_id": role_id, "permissions": new_perms}, broadcast=True)
@@ -1054,6 +1059,7 @@ def update_settings():
         # Simplistic approach: Just log it. Real mDNS/hosts file mapping is OS-specific and requires admin rights.
         logger.info(f"Local domain set to {local_domain}. Please configure your DNS or Hosts file accordingly.")
 
+    logger.info(f"Benutzer '{session.get('username')}' hat die Systemeinstellungen aktualisiert.")
     return jsonify({"success": True})
 
 @app.route('/api/network/wifi/scan', methods=['GET'])

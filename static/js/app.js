@@ -113,7 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    let lastToastMessage = '';
+    let lastToastTime = 0;
     const showToast = (message, type = 'info') => {
+        const now = Date.now();
+        if (message === lastToastMessage && now - lastToastTime < 3000) {
+            return; // Silent cooldown
+        }
+        lastToastMessage = message;
+        lastToastTime = now;
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         
@@ -687,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.openEditMemberModal = (id) => {
+    window.openEditMemberModal = async (id) => {
         const user = window.allUsers.find(u => u.id === id);
         if (!user) return;
         document.getElementById('edit-member-id').value = user.id;
@@ -695,6 +703,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-member-lastname').value = user.last_name || '';
         document.getElementById('edit-member-username').value = user.username || '';
         document.getElementById('edit-member-group').value = user.group_id || '';
+        
+        try {
+            const rolesRes = await fetch('/api/db/roles');
+            if (rolesRes.ok) {
+                const roles = await rolesRes.json();
+                const roleSelect = document.getElementById('edit-member-role');
+                if (roleSelect) {
+                    roleSelect.innerHTML = '';
+                    roles.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = r.role_name;
+                        roleSelect.appendChild(opt);
+                    });
+                    roleSelect.value = user.role_id || '';
+                }
+            }
+        } catch(e) {}
+        
         document.getElementById('edit-member-modal').classList.remove('hidden');
     };
 
@@ -743,7 +770,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 first_name: document.getElementById('edit-member-firstname').value,
                 last_name: document.getElementById('edit-member-lastname').value,
                 username: document.getElementById('edit-member-username').value,
-                group_id: document.getElementById('edit-member-group').value || null
+                group_id: document.getElementById('edit-member-group').value || null,
+                role_id: document.getElementById('edit-member-role') ? document.getElementById('edit-member-role').value : null
             };
             try {
                 const res = await fetch(`/api/db/users/${id}`, {
