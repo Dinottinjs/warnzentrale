@@ -1191,19 +1191,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnDelete.classList.remove('hidden');
                 
                 btnComplete.onclick = async () => {
-                    await fetch(`/api/missions/${id}`, {
-                        method: 'PUT',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({...mission, status: 'completed'})
-                    });
+                    if(!confirm('Diesen Einsatz wirklich abschließen?')) return;
+                    try {
+                        const res = await fetch(`/api/missions/${id}`, {
+                            method: 'PUT',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({...mission, status: 'completed'})
+                        });
+                        if (res.ok) {
+                            showToast('Einsatz abgeschlossen', 'success');
+                            document.getElementById('mission-detail-placeholder').classList.remove('hidden');
+                            document.getElementById('mission-detail-view').classList.add('hidden');
+                            window.currentOpenMissionId = null;
+                            if(typeof loadMissions === 'function') loadMissions();
+                        } else {
+                            showToast('Fehler beim Abschließen', 'error');
+                        }
+                    } catch(e) {
+                        console.error(e);
+                        showToast('Verbindungsfehler', 'error');
+                    }
                 };
 
                 btnDelete.onclick = async () => {
                     if(confirm('Diesen Einsatz wirklich löschen?')) {
-                        await fetch(`/api/missions/${id}`, { method: 'DELETE' });
-                        document.getElementById('mission-detail-placeholder').classList.remove('hidden');
-                        document.getElementById('mission-detail-view').classList.add('hidden');
-                        window.currentOpenMissionId = null;
+                        try {
+                            const res = await fetch(`/api/missions/${id}`, { method: 'DELETE' });
+                            if (res.ok) {
+                                showToast('Einsatz gelöscht', 'success');
+                                document.getElementById('mission-detail-placeholder').classList.remove('hidden');
+                                document.getElementById('mission-detail-view').classList.add('hidden');
+                                window.currentOpenMissionId = null;
+                                if(typeof loadMissions === 'function') loadMissions();
+                            } else {
+                                showToast('Fehler beim Löschen', 'error');
+                            }
+                        } catch(e) {
+                            console.error(e);
+                            showToast('Verbindungsfehler', 'error');
+                        }
                     }
                 };
 
