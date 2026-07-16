@@ -12,9 +12,12 @@ set "YELLOW=%ESC%[33m"
 set "BLUE=%ESC%[36m"
 set "NC=%ESC%[0m"
 
-echo %YELLOW%===================================================%NC$
+:: Enable Virtual Terminal Processing for ANSI Colors (fallback via Python)
+python -c "import ctypes; kernel32 = ctypes.windll.kernel32; kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)" >nul 2>&1
+
+echo %YELLOW%===================================================%NC%
 echo %YELLOW%    FEUERWEHR-WARNZENTRALE - WINDOWS INSTALLER     %NC%
-echo %YELLOW%====================================================%NC$
+echo %YELLOW%====================================================%NC%
 echo.
 
 call :ProgressBar 10 "Pruefe und installiere ggf. Python..."
@@ -71,7 +74,7 @@ echo WshShell.CurrentDirectory = "!PROJECT_DIR!" >> "!VBS_PATH!"
 echo WshShell.Run """!PROJECT_DIR!\.venv\Scripts\python.exe"" ""!PROJECT_DIR!\app.py""", 0, False >> "!VBS_PATH!"
 
 echo.
-echo %GREEN%===================================================%NC$
+echo %GREEN%===================================================%NC%
 echo %GREEN%[ERFOLG] Installation abgeschlossen!%NC%
 echo Die Warnzentrale startet beim naechsten Boot automatisch.
 echo Starte Dashboard jetzt...
@@ -81,7 +84,7 @@ echo.
 echo %YELLOW%Standard-Zugangsdaten (bitte nach Login aendern!):%NC%
 echo %YELLOW%Benutzername:%NC% admin
 echo %YELLOW%Passwort:%NC% 122
-echo %GREEN%==================================================%NC$
+echo %GREEN%==================================================%NC%
 start "" "http://127.0.0.1:5000"
 start "" "!PROJECT_DIR!\.venv\Scripts\python.exe" "app.py"
 pause
@@ -96,7 +99,7 @@ set "Message=%~2"
 set "RainbowLine="
 set "Colors=31 33 32 36 34 35"
 for %%A in (%Colors%) do (
-    set "RainbowLine=!RainbowLine!!SC![%%Am========!NC!"
+    set "RainbowLine=!RainbowLine!!ESC![%%Am========!NC!"
 )
 
 :: Calculate Bar
@@ -111,9 +114,9 @@ for /L %%i in (1, 1, 20) do (
 )
 
 cls
-echo %YELLOW%==================================================%NC$
+echo %YELLOW%==================================================%NC%
 echo %YELLOW%    FEUERWEHR-WARNZENTRALE - WINDOWS INSTALLER     %NC%
-echo %YELLOW%====================================================%NC$
+echo %YELLOW%====================================================%NC%
 echo.
 echo !RainbowLine!
 echo.
