@@ -632,10 +632,24 @@ def check_and_update():
     import subprocess
     import sys
     try:
-        # Check for updates
+        # Ensure it's a git repository and handle dubious ownership
+        subprocess.run(["git", "init"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "config", "--global", "--add", "safe.directory", os.getcwd()], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Check if remote exists, add if not
+        remotes = subprocess.run(["git", "remote"], capture_output=True, text=True)
+        if "origin" not in remotes.stdout:
+            subprocess.run(["git", "remote", "add", "origin", "https://github.com/Dinottinjs/warnzentrale.git"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+        # Fetch latest changes
         subprocess.run(["git", "fetch", "origin", "main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        status = subprocess.run(["git", "status", "-uno"], capture_output=True, text=True)
-        if "Your branch is behind" in status.stdout or "Dein Branch ist hinter" in status.stdout:
+        
+        # Compare local and remote commit hashes
+        local_hash_cmd = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+        local_hash = local_hash_cmd.stdout.strip() if local_hash_cmd.returncode == 0 else ""
+        remote_hash = subprocess.run(["git", "rev-parse", "origin/main"], capture_output=True, text=True).stdout.strip()
+        
+        if local_hash != remote_hash and remote_hash != "":
             # Update available
             subprocess.run(["git", "reset", "--hard", "origin/main"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--disable-pip-version-check"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -646,6 +660,9 @@ def check_and_update():
             os.execv(sys.executable, ['python', 'app.py'])
         else:
             return jsonify({"status": "up_to_date"})
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Git/Pip Fehler beim Update: {e}")
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
         logger.error(f"Fehler beim Update: {e}")
         return jsonify({"error": str(e)}), 500
