@@ -18,10 +18,34 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
 
 # --- System Stats Background Task ---
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def check_ping():
+    try:
+        start = time.time()
+        socket.create_connection(("8.8.8.8", 53), timeout=2)
+        end = time.time()
+        return f"{int((end - start) * 1000)} ms"
+    except Exception:
+        return "Offline"
+
 def sys_stats_thread():
+    os_info = f"{platform.system()} {platform.release()}"
+    ip_info = get_local_ip()
     while True:
         try:
             stats = {
+                "os": os_info,
+                "ip": ip_info,
+                "ping": check_ping(),
                 "cpu": psutil.cpu_percent(interval=None),
                 "ram": psutil.virtual_memory().percent,
                 "disk": psutil.disk_usage('/').percent
@@ -127,11 +151,14 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
+        address TEXT,
+        lat REAL,
+        lng REAL,
         status TEXT DEFAULT 'active',
         group_id INTEGER,
-        color_code TEXT DEFAULT '#e11d48',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        color_code TEXT,
         created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(group_id) REFERENCES groups(id),
         FOREIGN KEY(created_by) REFERENCES users(id)
     )''')
@@ -499,8 +526,8 @@ def api_missions():
         return jsonify([dict(r) for r in rows])
     elif request.method == 'POST':
         data = request.json
-        c = conn.execute("INSERT INTO missions (title, description, group_id, color_code, created_by) VALUES (?, ?, ?, ?, ?)", 
-                         (data['title'], data.get('description',''), data.get('group_id'), data.get('color_code', '#e11d48'), session['user_id']))
+        c = conn.execute("INSERT INTO missions (title, description, address, lat, lng, group_id, color_code, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                         (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('group_id'), data.get('color_code', '#e11d48'), session['user_id']))
         conn.commit()
         mission_id = c.lastrowid
         conn.close()
@@ -521,8 +548,8 @@ def api_mission_detail(mission_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
-        conn.execute("UPDATE missions SET title = ?, description = ?, status = ?, color_code = ? WHERE id = ?", 
-                     (data['title'], data.get('description',''), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
+        conn.execute("UPDATE missions SET title = ?, description = ?, address = ?, lat = ?, lng = ?, status = ?, color_code = ? WHERE id = ?", 
+                     (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
         conn.commit()
         conn.close()
         socketio.emit('missions_update', broadcast=True)
@@ -767,14 +794,16 @@ def api_wifi_connect():
 def inject_user():
     user = None
     role = None
+    group_id = None
     if 'user_id' in session:
         conn = get_db()
-        u = conn.execute("SELECT users.username, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        u = conn.execute("SELECT users.username, users.group_id, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
         conn.close()
         if u:
             user = u['username']
             role = u['role_name']
-    return dict(current_user=user, current_role=role)
+            group_id = u['group_id']
+    return dict(current_user=user, current_role=role, current_group_id=group_id)
 
 if __name__ == '__main__':
     # Fetch port from db

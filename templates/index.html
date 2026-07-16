@@ -64,27 +64,27 @@
         
         <!-- Tabs -->
         <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
-            <button class="tab-btn active px-6 py-2 bg-white dark:bg-panel-bg rounded-t-lg border-b-2 border-neon-green font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
-                🏠 <i class="fa-solid fa-desktop mx-1"></i> Dashboard
+            <button class="tab-btn active px-6 py-3 bg-white dark:bg-panel-bg rounded-t-lg border-b-2 border-neon-green text-lg font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
+                <i class="fa-solid fa-desktop mx-2"></i> Dashboard
             </button>
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="missions">
-                🚒 <i class="fa-solid fa-truck-fast mx-1"></i> Einsätze
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="missions">
+                <i class="fa-solid fa-truck-fast mx-2"></i> Einsätze
             </button>
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="link">
-                🔗 <i class="fa-solid fa-link mx-1"></i> Kumpel-Verknüpfung
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="link">
+                <i class="fa-solid fa-link mx-2"></i> System-Link
             </button>
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="rights">
-                👥 <i class="fa-solid fa-users-gear mx-1"></i> Mitglieder & Rechte
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="rights">
+                <i class="fa-solid fa-users-gear mx-2"></i> Mitglieder & Rechte
             </button>
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
-                ⚙️ <i class="fa-solid fa-gear mx-1"></i> Einstellungen
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
+                <i class="fa-solid fa-gear mx-2"></i> Einstellungen
             </button>
             {% if current_role == 'Admin' %}
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap" data-tab="db">
-                🗄️ <i class="fa-solid fa-database mx-1"></i> Datenbank-Management
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap" data-tab="db">
+                <i class="fa-solid fa-database mx-2"></i> Datenbank
             </button>
-            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);">
-                👑 <i class="fa-solid fa-crown mx-1"></i> Gruppenbesitzer
+            <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);">
+                <i class="fa-solid fa-crown mx-2"></i> Systemsteuerung
             </button>
             {% endif %}
         </div>
@@ -127,7 +127,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-[400px]">
                 <!-- Leaflet Map -->
                 <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
-                    <h2 class="text-lg font-bold p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"><i class="fa-solid fa-map-location-dot mr-2"></i> Live-Karte (Österreich)</h2>
+                    <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                        <h2 class="text-xl font-bold"><i class="fa-solid fa-map-location-dot mr-2 text-blue-500"></i> Live-Karte (Österreich)</h2>
+                        <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm">
+                            <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
+                        </button>
+                    </div>
                     <div id="map" class="flex-1 w-full h-full z-0"></div>
                 </div>
 
@@ -249,17 +254,18 @@
             <div class="bg-white dark:bg-panel-bg rounded-xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-800 shadow-2xl">
                 <h3 class="text-xl font-bold mb-4">Neuen Einsatz erstellen</h3>
                 <form id="new-mission-form" class="space-y-4">
-                    <input type="text" id="new-mission-title" placeholder="Stichwort / Titel" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none" required>
-                    <textarea id="new-mission-desc" placeholder="Details (Ort, Lage, ...)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none" rows="3"></textarea>
+                    <input type="text" id="new-mission-title" placeholder="Stichwort / Titel (z.B. Brand B4)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none" required>
+                    <input type="text" id="new-mission-address" placeholder="Einsatzadresse / Ort" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none" required>
+                    <textarea id="new-mission-desc" placeholder="Details (Ortsbeschreibung, Lage, ...)" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none" rows="3"></textarea>
                     
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Zuständige Gruppe</label>
-                        <select id="new-mission-group" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green outline-none"></select>
+                        <label class="block text-sm text-gray-500 mb-1">Zuständige Gruppe</label>
+                        <select id="new-mission-group" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3 text-lg focus:border-neon-green outline-none"></select>
                     </div>
 
-                    <div class="flex space-x-2 pt-2">
-                        <button type="button" onclick="document.getElementById('modal-new-mission').classList.add('hidden')" class="flex-1 bg-gray-200 dark:bg-gray-700 py-2 rounded">Abbrechen</button>
-                        <button type="submit" class="flex-1 bg-neon-green text-black font-bold py-2 rounded">Erstellen</button>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" onclick="document.getElementById('modal-new-mission').classList.add('hidden')" class="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 py-3 rounded text-lg font-semibold transition-colors">Abbrechen</button>
+                        <button type="submit" class="flex-1 bg-neon-green hover:bg-green-500 text-black font-bold py-3 rounded text-lg shadow-lg shadow-neon-green/30 transition-colors">Einsatz Starten</button>
                     </div>
                 </form>
             </div>
@@ -343,22 +349,10 @@
                 </div>
 
                 <!-- Existing Groups List -->
-                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-                    <h3 class="font-bold text-lg mb-4">Gruppen Verwaltung</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="border-b border-gray-200 dark:border-gray-700">
-                                <tr>
-                                    <th class="pb-2">Name</th>
-                                    <th class="pb-2">Beschreibung</th>
-                                    <th class="pb-2">Farbe</th>
-                                    <th class="pb-2 text-right">Aktion</th>
-                                </tr>
-                            </thead>
-                            <tbody id="groups-management-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <!-- JS injected -->
-                            </tbody>
-                        </table>
+                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Gruppen</h3>
+                    <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- JS injected cards -->
                     </div>
                 </div>
             </div>
@@ -573,6 +567,11 @@
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        window.socket = io();
+        window.currentRole = "{{ current_role }}";
+        window.currentGroupId = {{ current_group_id | default('null') }};
+    </script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

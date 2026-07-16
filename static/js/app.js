@@ -146,6 +146,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    let missionLines = {};
+    let missionMarkersLocal = {};
+    const centralLocation = [47.5162, 14.5501]; // Default Center
+
+    const drawMissionsOnMap = (missions) => {
+        if (!map) return;
+        
+        const currentIds = missions.map(m => m.id);
+        
+        // Remove old lines and markers
+        for (let id in missionLines) {
+            if (!currentIds.includes(parseInt(id))) {
+                map.removeLayer(missionLines[id]);
+                delete missionLines[id];
+            }
+        }
+        for (let id in missionMarkersLocal) {
+            if (!currentIds.includes(parseInt(id))) {
+                map.removeLayer(missionMarkersLocal[id]);
+                delete missionMarkersLocal[id];
+            }
+        }
+
+        for (let m of missions) {
+            // Visibility Check
+            let isVisible = false;
+            if (window.currentRole === 'Admin') {
+                isVisible = true;
+            } else if (window.currentGroupId && window.currentGroupId == m.group_id) {
+                isVisible = true;
+            }
+
+            if (isVisible && m.lat && m.lng && m.status === 'active') {
+                const targetCoords = [m.lat, m.lng];
+                
+                // Draw Marker
+                if (!missionMarkersLocal[m.id]) {
+                    const markerColor = m.color_code || '#e11d48';
+                    const html = `<div style="width:24px; height:24px; background-color:${markerColor}; border-radius:50%; border:3px solid white; box-shadow: 0 0 10px ${markerColor};"></div>`;
+                    const icon = L.divIcon({ className: 'mission-div-icon', html, iconSize:[24,24], iconAnchor:[12,12] });
+                    const marker = L.marker(targetCoords, {icon}).bindPopup(`<b>${m.title}</b><br>${m.address || ''}`).addTo(map);
+                    missionMarkersLocal[m.id] = marker;
+                }
+
+                // Draw Line
+                if (!missionLines[m.id]) {
+                    const lineColor = m.color_code || '#e11d48';
+                    const polyline = L.polyline([centralLocation, targetCoords], {
+                        color: lineColor,
+                        weight: 4,
+                        opacity: 0.8,
+                        dashArray: '10, 10'
+                    }).addTo(map);
+                    missionLines[m.id] = polyline;
+                }
+            }
+        }
+    };
+
     // === 4. Data Polling ===
     let pollIntervalId = null;
 
@@ -787,6 +846,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(gSelect) {
                 gSelect.innerHTML = groups.map(g => `<option value="${g.id}" data-color="${g.color || '#e11d48'}">${g.group_name}</option>`).join('');
             }
+            
+            drawMissionsOnMap(missions);
         } catch(e) {
             console.error(e);
         }
@@ -917,10 +978,30 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const groupSelect = document.getElementById('new-mission-group');
             const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+            const address = document.getElementById('new-mission-address').value;
+            
+            let lat = null;
+            let lng = null;
+
+            if (address) {
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                    const geoData = await geoRes.json();
+                    if (geoData && geoData.length > 0) {
+                        lat = parseFloat(geoData[0].lat);
+                        lng = parseFloat(geoData[0].lon);
+                    }
+                } catch(e) {
+                    console.error("Geocoding fehlgeschlagen:", e);
+                }
+            }
             
             const data = {
                 title: document.getElementById('new-mission-title').value,
                 description: document.getElementById('new-mission-desc').value,
+                address: address,
+                lat: lat,
+                lng: lng,
                 group_id: selectedOption ? selectedOption.value : null,
                 color_code: selectedOption ? selectedOption.dataset.color : '#e11d48'
             };
@@ -1032,18 +1113,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/db/groups');
             const groups = await res.json();
-            const tbody = document.getElementById('groups-management-tbody');
-            if(tbody) {
-                tbody.innerHTML = groups.map(g => `
-                    <tr>
-                        <td class="py-2"><input type="text" id="g-name-${g.id}" value="${g.group_name}" class="bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded p-1 w-full text-sm"></td>
-                        <td class="py-2"><input type="text" id="g-desc-${g.id}" value="${g.description || ''}" class="bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded p-1 w-full text-sm"></td>
-                        <td class="py-2"><input type="color" id="g-color-${g.id}" value="${g.color || '#e11d48'}" class="h-8 w-14 cursor-pointer bg-transparent border-0 p-0"></td>
-                        <td class="py-2 text-right">
-                            <button onclick="updateGroup(${g.id})" class="text-blue-500 hover:text-blue-700 mx-1"><i class="fa-solid fa-save"></i></button>
-                            <button onclick="deleteGroup(${g.id})" class="text-red-500 hover:text-red-700 mx-1"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
+            const grid = document.getElementById('groups-management-grid');
+            if(grid) {
+                grid.innerHTML = groups.map(g => `
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute top-0 left-0 w-2 h-full" style="background-color: ${g.color || '#e11d48'}"></div>
+                        <div class="pl-4 flex-1">
+                            <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-1">Name</label>
+                            <input type="text" id="g-name-${g.id}" value="${g.group_name}" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 w-full text-lg font-bold mb-4 focus:border-neon-green outline-none transition-colors">
+                            
+                            <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-1">Beschreibung</label>
+                            <input type="text" id="g-desc-${g.id}" value="${g.description || ''}" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 w-full mb-4 focus:border-neon-green outline-none transition-colors">
+                            
+                            <div class="flex items-center space-x-3 mb-6">
+                                <label class="text-sm font-bold text-gray-700 dark:text-gray-300">Farbe:</label>
+                                <input type="color" id="g-color-${g.id}" value="${g.color || '#e11d48'}" class="h-10 w-16 cursor-pointer bg-transparent border-0 p-0 rounded">
+                            </div>
+                        </div>
+                        <div class="pl-4 mt-auto flex space-x-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <button onclick="updateGroup(${g.id})" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-bold shadow transition-colors"><i class="fa-solid fa-save mr-2"></i>Speichern</button>
+                            <button onclick="deleteGroup(${g.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-bold shadow transition-colors"><i class="fa-solid fa-trash mr-2"></i>Löschen</button>
+                        </div>
+                    </div>
                 `).join('');
             }
         } catch(e) {
