@@ -643,7 +643,7 @@ def api_users():
 
 @app.route('/api/users/<int:user_id>/group', methods=['PUT'])
 @admin_required
-def update_user_group(user_id):
+def update_user_group_id(user_id):
     data = request.json
     new_group_id = data.get('group_id')
     conn = get_db()
@@ -848,30 +848,46 @@ def inject_user():
             group_id = u['group_id']
     return dict(current_user=user, current_role=role, current_group_id=group_id)
 
+def get_free_port(starting_port):
+    import socket
+    port = starting_port
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('0.0.0.0', port))
+                return port
+            except OSError:
+                port += 1
+
 if __name__ == '__main__':
     # Fetch port from db
     conn = get_db()
     port_row = conn.execute("SELECT value FROM settings WHERE key = 'port'").fetchone()
-    conn.close()
-    run_port = 8080
+    
+    desired_port = 5000
     if port_row and port_row['value'].isdigit():
-        run_port = int(port_row['value'])
+        desired_port = int(port_row['value'])
+        
+    run_port = get_free_port(desired_port)
+    
+    if run_port != desired_port:
+        conn.execute("UPDATE settings SET value = ? WHERE key = 'port'", (str(run_port),))
+        conn.commit()
+    conn.close()
     
     # Start the system stats thread
     socketio.start_background_task(sys_stats_thread)
     
     print("\n" + "="*50)
-    print(f"🚀 WARNZENTRALE LOKAL ERREICHBAR UNTER:")
-    print(f"👉 http://127.0.0.1:{run_port}")
+    print(f" WARNZENTRALE LOKAL ERREICHBAR UNTER:")
+    print(f" -> http://127.0.0.1:{run_port}")
     print("="*50 + "\n")
 
+    import threading
+    import webbrowser
+    def open_browser():
+        webbrowser.open(f'http://127.0.0.1:{run_port}')
+    threading.Timer(1.5, open_browser).start()
+
     # Use socketio.run instead of app.run
-    try:
-        socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)
-    except OSError as e:
-        if "in use" in str(e).lower() or "zugriff verweigert" in str(e).lower() or e.errno in (98, 10048):
-            print(f"\n[FEHLER] Port {run_port} wird bereits von einem anderen Programm verwendet!")
-            print("Bitte wechsle den Port in der 'warnzentrale.db' oder beende das andere Programm.")
-            os.system("pause")
-        else:
-            raise
+    socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)
