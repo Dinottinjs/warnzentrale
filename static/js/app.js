@@ -1193,6 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const grid = document.getElementById('groups-management-grid');
             if(grid) {
+                grid.innerHTML = groups.map(g => {
                     let membersHtml = '';
                     if (users) {
                         const groupMembers = users.filter(u => u.group_id === g.id);
