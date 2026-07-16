@@ -1,0 +1,61 @@
+/* Custom Scrollbar for dark theme */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #1a1a1a; 
+}
+::-webkit-scrollbar-thumb {
+    background: #333; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555; 
+}
+
+/* Tab Content Transitions */
+.tab-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Alert animations */
+.alarm-pulse {
+    animation: pulseRed 1.5s infinite;
+}
+@keyframes pulseRed {
+    0% { background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.5); box-shadow: 0 0 10px rgba(255,0,0,0.2); }
+    50% { background-color: rgba(255, 0, 0, 0.3); border-color: #ff0000; box-shadow: 0 0 20px rgba(255,0,0,0.6); }
+    100% { background-color: rgba(255, 0, 0, 0.1); border-color: rgba(255, 0, 0, 0.5); box-shadow: 0 0 10px rgba(255,0,0,0.2); }
+}
+
+.warning-border {
+    border-color: #ffcc00;
+}
+
+/* Event cards base styling */
+.event-card {
+    border-left-width: 4px;
+    transition: all 0.3s ease;
+}
+.event-card.ALARM {
+    border-left-color: #ff0000;
+}
+.event-card.WARNUNG {
+    border-left-color: #ffcc00;
+}
+.event-card.INFO {
+    border-left-color: #39ff14;
+}
+
+/* Neon Glow for generic states */
+.glow-green {
+    text-shadow: 0 0 10px rgba(57, 255, 20, 0.7);
+}
+.glow-red {
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+}
