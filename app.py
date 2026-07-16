@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import sqlite3
 import socket
@@ -6,14 +7,27 @@ import platform
 import subprocess
 import psutil
 import requests
+import logging
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory
+from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
 
+# --- Logging Setup ---
+log_file = 'warnzentrale.log'
+logging.basicConfig(level=logging.INFO,
+                    format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}',
+                    handlers=[
+                        logging.FileHandler(log_file, encoding='utf-8'),
+                        logging.StreamHandler()
+                    ])
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.secret_key = 'super_secret_dashboard_key_v3'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 DB_FILE = 'warnzentrale.db'
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -88,9 +102,9 @@ def init_db():
     # Seed initial data
     c.execute("SELECT COUNT(*) FROM roles")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps(["all"])))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps(["trigger_alarm", "view_only"])))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps(["view_only"])))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps({"all": True, "trigger_alarm": True, "manage_users": True, "view_only": True})))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps({"all": False, "trigger_alarm": True, "manage_users": False, "view_only": True})))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps({"all": False, "trigger_alarm": False, "manage_users": False, "view_only": True})))
         
     c.execute("SELECT COUNT(*) FROM groups")
     if c.fetchone()[0] == 0:
@@ -98,7 +112,6 @@ def init_db():
         
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
-        # Default admin: password '122'
         pwd_hash = generate_password_hash("122")
         c.execute("INSERT INTO users (username, password_hash, role_id, group_id, theme, profile_picture_path) VALUES (?, ?, 1, 1, 'dark', '')", 
                   ("admin", pwd_hash))
@@ -137,6 +150,20 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def socket_admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # SocketIO requests typically share the Flask session
+        if 'user_id' not in session:
+            return
+        conn = get_db()
+        user = conn.execute("SELECT roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        conn.close()
+        if not user or user['role_name'] != 'Admin':
+            return
+        return f(*args, **kwargs)
+    return decorated_function
+
 # --- Settings Helper ---
 def get_setting(key, default=""):
     conn = get_db()
@@ -166,12 +193,15 @@ def login():
         if user and check_password_hash(user['password_hash'], password):
             session['user_id'] = user['id']
             session['username'] = user['username']
+            logger.info(f"User {username} logged in.")
             return jsonify({"success": True})
+        logger.warning(f"Failed login attempt for username: {username}")
         return jsonify({"success": False, "error": "Ungültige Anmeldedaten"}), 401
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
+    logger.info(f"User {session.get('username')} logged out.")
     session.clear()
     return redirect(url_for('login'))
 
@@ -230,6 +260,7 @@ def account():
         if "password" in data and data["password"]:
             pwd_hash = generate_password_hash(data["password"])
             conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pwd_hash, session['user_id']))
+            logger.info(f"User {session['username']} changed their password.")
         if "theme" in data:
             conn.execute("UPDATE users SET theme = ? WHERE id = ?", (data["theme"], session['user_id']))
         conn.commit()
@@ -239,7 +270,6 @@ def account():
     user = conn.execute("SELECT username, email, profile_picture_path as avatar, theme FROM users WHERE id = ?", (session['user_id'],)).fetchone()
     conn.close()
     
-    # We must convert row to dict manually
     return jsonify({
         "name": user["username"],
         "email": user["email"],
@@ -268,6 +298,7 @@ def upload_avatar():
         conn.commit()
         conn.close()
         
+        logger.info(f"User {session['username']} updated avatar.")
         return jsonify({"success": True, "filename": filename})
     except Exception as e:
         return jsonify({"error": "Invalid image"}), 400
@@ -286,11 +317,12 @@ def kumpel_config():
         if "ip" in data: set_setting('kumpel_ip', data['ip'])
         if "port" in data: set_setting('kumpel_port', data['port'])
         if "password" in data: set_setting('kumpel_password', data['password'])
+        logger.info(f"Admin updated Kumpel API config.")
         return jsonify({"success": True})
     return jsonify({
         "ip": get_setting("kumpel_ip"),
         "port": get_setting("kumpel_port"),
-        "password": "" # Hidden
+        "password": "" 
     })
 
 @app.route('/api/kumpel/test', methods=['POST'])
@@ -301,8 +333,10 @@ def kumpel_test():
         url = get_kumpel_url('/api/login')
         res = api_session.post(url, json={"password": pwd}, timeout=5)
         res.raise_for_status()
+        logger.info("Successfully connected to Kumpel Software API.")
         return jsonify({"success": True})
     except Exception as e:
+        logger.error(f"Failed to connect to Kumpel API: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 @app.route('/api/kumpel/<path:subpath>', methods=['GET', 'POST', 'DELETE'])
@@ -312,7 +346,6 @@ def kumpel_proxy(subpath):
     try:
         if request.method == 'GET':
             res = api_session.get(url, params=request.args, timeout=5)
-            # Sync to local db if history
             if subpath == 'history' and res.ok:
                 data = res.json()
                 events = data.get('events', data) if isinstance(data, dict) else data
@@ -351,6 +384,7 @@ def add_group():
     try:
         conn.execute("INSERT INTO groups (group_name, description) VALUES (?, ?)", (data['group_name'], data.get('description','')))
         conn.commit()
+        logger.info(f"Group created: {data['group_name']}")
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -364,6 +398,7 @@ def delete_user(user_id):
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
+    logger.info(f"User ID {user_id} deleted.")
     return jsonify({"success": True})
 
 @app.route('/api/invitations', methods=['POST'])
@@ -377,7 +412,56 @@ def create_invitation():
                  (data.get('email',''), token, data.get('role_id',3), data.get('group_id',1)))
     conn.commit()
     conn.close()
+    logger.info(f"Invitation created.")
     return jsonify({"success": True, "token": token})
+
+# --- Socket.IO Handlers (Group Owner / Admin) ---
+@socketio.on('system_action')
+@socket_admin_required
+def handle_system_action(data):
+    action = data.get('action')
+    if action == 'restart':
+        logger.warning(f"Admin '{session.get('username')}' initiated system RESTART.")
+        socketio.emit('server_message', {"msg": "Server startet neu...", "type": "warning"})
+        # Start a new process
+        os.execl(sys.executable, sys.executable, *sys.argv)
+    elif action == 'shutdown':
+        logger.warning(f"Admin '{session.get('username')}' initiated system SHUTDOWN.")
+        socketio.emit('server_message', {"msg": "Server wird heruntergefahren...", "type": "error"})
+        os._exit(0)
+
+@socketio.on('get_logs')
+@socket_admin_required
+def handle_get_logs():
+    try:
+        with open(log_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        # the file contains json lines from our formatter
+        logs = []
+        for line in lines[-100:]: # last 100 lines
+            try:
+                logs.append(json.loads(line.strip()))
+            except:
+                pass
+        emit('logs_data', logs)
+    except Exception as e:
+        emit('logs_data', [{"timestamp": "", "level": "ERROR", "message": f"Konnte Logs nicht lesen: {e}"}])
+
+@socketio.on('update_permissions')
+@socket_admin_required
+def handle_update_permissions(data):
+    role_id = data.get('role_id')
+    new_perms = data.get('permissions')
+    
+    if role_id and new_perms is not None:
+        conn = get_db()
+        conn.execute("UPDATE roles SET permissions = ? WHERE id = ?", (json.dumps(new_perms), role_id))
+        conn.commit()
+        conn.close()
+        logger.info(f"Admin updated permissions for role_id {role_id}.")
+        
+        # Broadcast the change to all connected clients
+        emit('permissions_updated', {"role_id": role_id, "permissions": new_perms}, broadcast=True)
 
 # --- Direct User Context injection ---
 @app.context_processor
@@ -394,4 +478,5 @@ def inject_user():
     return dict(current_user=user, current_role=role)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # Use socketio.run instead of app.run
+    socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True)

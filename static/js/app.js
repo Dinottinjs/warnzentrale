@@ -481,6 +481,127 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // === 5.5 Socket.IO & Owner Tab ===
+    let socket;
+    if (typeof io !== 'undefined') {
+        socket = io();
+
+        socket.on('server_message', (data) => {
+            showToast(data.msg, data.type === 'error' ? 'error' : 'success');
+        });
+
+        socket.on('logs_data', (logs) => {
+            const viewer = document.getElementById('log-viewer');
+            if (viewer) {
+                viewer.innerHTML = logs.map(l => {
+                    const color = l.level === 'ERROR' ? 'text-red-500' : (l.level === 'WARNING' ? 'text-yellow-500' : 'text-green-400');
+                    return `<span class="text-gray-500">[${l.timestamp}]</span> <span class="${color} font-bold">${l.level}</span> ${l.message}`;
+                }).join('\n');
+                viewer.scrollTop = viewer.scrollHeight;
+            }
+        });
+
+        socket.on('permissions_updated', (data) => {
+            showToast('Rechte wurden live aktualisiert!', 'success');
+            if (document.querySelector('.tab-btn[data-tab="owner"]')?.classList.contains('active')) {
+                loadPermissionsMatrix();
+            }
+        });
+
+        const btnRestart = document.getElementById('btn-system-restart');
+        if (btnRestart) {
+            btnRestart.addEventListener('click', () => {
+                if (confirm('Wirklich das Backend neu starten?')) socket.emit('system_action', {action: 'restart'});
+            });
+        }
+        
+        const btnShutdown = document.getElementById('btn-system-shutdown');
+        if (btnShutdown) {
+            btnShutdown.addEventListener('click', () => {
+                if (confirm('Wirklich herunterfahren? Das Dashboard ist danach offline!')) socket.emit('system_action', {action: 'shutdown'});
+            });
+        }
+
+        const btnLogs = document.getElementById('btn-refresh-logs');
+        if (btnLogs) {
+            btnLogs.addEventListener('click', () => socket.emit('get_logs'));
+        }
+    }
+
+    const loadPermissionsMatrix = async () => {
+        try {
+            const res = await fetch('/api/db/roles');
+            const roles = await res.json();
+            
+            const head = document.getElementById('perm-matrix-head');
+            const body = document.getElementById('perm-matrix-body');
+            if (!head || !body) return;
+
+            const permKeys = ['all', 'trigger_alarm', 'manage_users', 'view_only'];
+            const permLabels = {
+                'all': 'Vollzugriff (Admin)',
+                'trigger_alarm': 'Alarm auslösen',
+                'manage_users': 'Nutzer verwalten',
+                'view_only': 'Nur Lesen'
+            };
+
+            head.innerHTML = '<th class="p-4 text-left font-bold border-b border-gray-200 dark:border-gray-700">Funktion</th>' + 
+                             roles.map(r => `<th class="p-4 border-b border-gray-200 dark:border-gray-700"><span class="rank-badge">${r.role_name}</span></th>`).join('');
+
+            body.innerHTML = permKeys.map(key => {
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <td class="p-4 text-left font-semibold text-gray-700 dark:text-gray-300">${permLabels[key]}</td>
+                        ${roles.map(r => {
+                            let perms = {};
+                            try { perms = JSON.parse(r.permissions); } catch(e){}
+                            const isChecked = perms[key] === true ? 'checked' : '';
+                            return `
+                                <td class="p-4">
+                                    <label class="switch">
+                                        <input type="checkbox" data-role-id="${r.id}" data-perm-key="${key}" ${isChecked} onchange="updatePerm(this)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </td>
+                            `;
+                        }).join('')}
+                    </tr>
+                `;
+            }).join('');
+        } catch(e) { console.error(e); }
+    };
+
+    window.updatePerm = async (checkbox) => {
+        const roleId = parseInt(checkbox.dataset.roleId);
+        const permKey = checkbox.dataset.permKey;
+        const isChecked = checkbox.checked;
+
+        const res = await fetch('/api/db/roles');
+        const roles = await res.json();
+        const role = roles.find(r => r.id === roleId);
+        let perms = {};
+        try { perms = JSON.parse(role.permissions); } catch(e){}
+        
+        perms[permKey] = isChecked;
+
+        if (socket) {
+            socket.emit('update_permissions', {
+                role_id: roleId,
+                permissions: perms
+            });
+        }
+    };
+
+    // Load extra data on tab switch
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            if (e.currentTarget.dataset.tab === 'owner') {
+                loadPermissionsMatrix();
+                if (socket) socket.emit('get_logs');
+            }
+        });
+    });
+
     // === 6. Init ===
     const localTheme = localStorage.getItem('theme');
     if (localTheme) applyTheme(localTheme);

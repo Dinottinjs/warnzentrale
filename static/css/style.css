@@ -73,3 +73,43 @@ html.dark .leaflet-control-attribution {
         box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
     }
 }
+
+.map-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+html.dark .map-overlay {
+    background: rgba(30, 30, 30, 0.9);
+    color: white;
+}
+
+/* Toggle Switch CSS (ZeNmOdZ Design) */
+.switch {
+    position: relative; display: inline-block; width: 44px; height: 24px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #4b5563; transition: .3s; border-radius: 24px;
+}
+.slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+    background-color: white; transition: .3s; border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+input:checked + .slider { background-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+input:checked + .slider:before { transform: translateX(20px); }
+input:disabled + .slider { opacity: 0.5; cursor: not-allowed; }
+
+.rank-badge {
+    padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: bold; font-size: 0.85rem;
+    background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid #6366f1;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+}
