@@ -198,13 +198,54 @@ def init_db():
         FOREIGN KEY(mission_id) REFERENCES missions(id),
         FOREIGN KEY(user_id) REFERENCES users(id)
     )''')
+    c.execute("SELECT id, role_name, permissions FROM roles")
+    existing_roles = c.fetchall()
+    
+    # Define default permissions template
+    default_perms = {
+        "all": False,
+        "trigger_alarm": False,
+        "manage_users": False,
+        "view_only": True,
+        "manage_missions": False,
+        "edit_log": False,
+        "manage_groups": False,
+        "manage_vehicles": False,
+        "manage_settings": False,
+        "manage_roles": False,
+        "manage_system": False
+    }
 
-    # Seed initial data
-    c.execute("SELECT COUNT(*) FROM roles")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps({"all": True, "trigger_alarm": True, "manage_users": True, "view_only": True, "manage_missions": True, "edit_log": True, "manage_groups": True, "manage_vehicles": True})))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps({"all": False, "trigger_alarm": True, "manage_users": False, "view_only": True, "manage_missions": True, "edit_log": True, "manage_groups": False, "manage_vehicles": True})))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps({"all": False, "trigger_alarm": False, "manage_users": False, "view_only": True, "manage_missions": False, "edit_log": False, "manage_groups": False, "manage_vehicles": False})))
+    if not existing_roles:
+        admin_perms = default_perms.copy()
+        for k in admin_perms: admin_perms[k] = True
+        
+        op_perms = default_perms.copy()
+        op_perms.update({"trigger_alarm": True, "manage_missions": True, "edit_log": True, "manage_vehicles": True})
+        
+        member_perms = default_perms.copy()
+        
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps(admin_perms)))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps(op_perms)))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps(member_perms)))
+    else:
+        # Upgrade existing roles
+        for r in existing_roles:
+            r_id, r_name, r_perms_str = r
+            try:
+                r_perms = json.loads(r_perms_str)
+            except:
+                r_perms = {}
+            
+            updated = False
+            for k, v in default_perms.items():
+                if k not in r_perms:
+                    # Give admin all rights, others default
+                    r_perms[k] = True if r_name == "Admin" else v
+                    updated = True
+            
+            if updated:
+                c.execute("UPDATE roles SET permissions = ? WHERE id = ?", (json.dumps(r_perms), r_id))
         
     c.execute("SELECT COUNT(*) FROM groups")
     if c.fetchone()[0] == 0:
@@ -241,6 +282,28 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def permission_required(perm_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return jsonify({"error": "Unauthorized"}), 401
+            conn = get_db()
+            user = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+            conn.close()
+            if not user:
+                return jsonify({"error": "Unauthorized"}), 403
+            
+            try:
+                perms = json.loads(user['permissions'])
+                if perms.get('all', False) or perms.get(perm_name, False):
+                    return f(*args, **kwargs)
+            except:
+                pass
+            return jsonify({"error": "Forbidden"}), 403
+        return decorated_function
+    return decorator
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -254,19 +317,26 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def socket_admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # SocketIO requests typically share the Flask session
-        if 'user_id' not in session:
+def socket_permission_required(perm_name):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return
+            conn = get_db()
+            user = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+            conn.close()
+            if not user:
+                return
+            try:
+                perms = json.loads(user['permissions'])
+                if perms.get('all', False) or perms.get(perm_name, False):
+                    return f(*args, **kwargs)
+            except:
+                pass
             return
-        conn = get_db()
-        user = conn.execute("SELECT roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
-        conn.close()
-        if not user or user['role_name'] != 'Admin':
-            return
-        return f(*args, **kwargs)
-    return decorated_function
+        return decorated_function
+    return decorator
 
 # --- Settings Helper ---
 def get_setting(key, default=""):
@@ -425,7 +495,7 @@ def get_kumpel_url(path):
     return f"http://{ip}:{port}{path}"
 
 @app.route('/api/kumpel/config', methods=['GET', 'POST'])
-@admin_required
+@permission_required('manage_settings')
 def kumpel_config():
     if request.method == 'POST':
         data = request.json
@@ -441,7 +511,7 @@ def kumpel_config():
     })
 
 @app.route('/api/kumpel/test', methods=['POST'])
-@admin_required
+@permission_required('manage_settings')
 def kumpel_test():
     pwd = get_setting("kumpel_password")
     try:
@@ -482,8 +552,9 @@ def kumpel_proxy(subpath):
 
 # --- DB Management & Rights (Admin) ---
 @app.route('/api/db/<table>', methods=['GET'])
-@admin_required
+@permission_required('manage_settings') # Can be adjusted, but manage_settings acts as a high-level permission
 def get_table(table):
+    # Depending on table, we could implement finer checks, but for now we require manage_settings
     if table not in ['users', 'roles', 'groups', 'invitations', 'settings', 'missions', 'vehicles', 'mission_logs']:
         return jsonify({"error": "Invalid table"}), 400
     conn = get_db()
@@ -492,7 +563,7 @@ def get_table(table):
     return jsonify([dict(r) for r in rows])
 
 @app.route('/api/db/groups', methods=['POST'])
-@admin_required
+@permission_required('manage_groups')
 def add_group():
     data = request.json
     conn = get_db()
@@ -507,7 +578,7 @@ def add_group():
         conn.close()
 
 @app.route('/api/db/groups/<int:group_id>', methods=['PUT', 'DELETE'])
-@admin_required
+@permission_required('manage_groups')
 def manage_group(group_id):
     conn = get_db()
     try:
@@ -528,13 +599,14 @@ def manage_group(group_id):
         conn.close()
 
 @app.route('/api/db/users/<int:user_id>/group', methods=['PUT'])
-@admin_required
+@permission_required('manage_users')
 def update_user_group(user_id):
     data = request.json
     conn = get_db()
     try:
         conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (data.get('group_id'), user_id))
         conn.commit()
+        socketio.emit('users_update', broadcast=True)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -642,7 +714,7 @@ def api_users():
     return jsonify([dict(u) for u in users])
 
 @app.route('/api/users/<int:user_id>/group', methods=['PUT'])
-@admin_required
+@permission_required('manage_users')
 def update_user_group_id(user_id):
     data = request.json
     new_group_id = data.get('group_id')
@@ -650,19 +722,21 @@ def update_user_group_id(user_id):
     conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (new_group_id, user_id))
     conn.commit()
     conn.close()
+    socketio.emit('users_update', broadcast=True)
     return jsonify({"success": True})
 @app.route('/api/db/users/<int:user_id>', methods=['DELETE'])
-@admin_required
+@permission_required('manage_users')
 def delete_user(user_id):
     conn = get_db()
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     logger.info(f"User ID {user_id} deleted.")
+    socketio.emit('users_update', broadcast=True)
     return jsonify({"success": True})
 
 @app.route('/api/invitations', methods=['POST'])
-@admin_required
+@permission_required('manage_users')
 def create_invitation():
     import uuid
     data = request.json
@@ -673,11 +747,12 @@ def create_invitation():
     conn.commit()
     conn.close()
     logger.info(f"Invitation created.")
+    socketio.emit('users_update', broadcast=True)
     return jsonify({"success": True, "token": token})
 
 # --- Socket.IO Handlers (Group Owner / Admin) ---
 @socketio.on('system_action')
-@socket_admin_required
+@socket_permission_required('manage_system')
 def handle_system_action(data):
     action = data.get('action')
     if action == 'restart':
@@ -691,7 +766,7 @@ def handle_system_action(data):
         os._exit(0)
 
 @socketio.on('get_logs')
-@socket_admin_required
+@socket_permission_required('manage_system')
 def handle_get_logs():
     try:
         with open(log_file, 'r', encoding='utf-8') as f:
@@ -708,7 +783,7 @@ def handle_get_logs():
         emit('logs_data', [{"timestamp": "", "level": "ERROR", "message": f"Konnte Logs nicht lesen: {e}"}])
 
 @socketio.on('update_permissions')
-@socket_admin_required
+@socket_permission_required('manage_roles')
 def handle_update_permissions(data):
     role_id = data.get('role_id')
     new_perms = data.get('permissions')
@@ -724,7 +799,7 @@ def handle_update_permissions(data):
         emit('permissions_updated', {"role_id": role_id, "permissions": new_perms}, broadcast=True)
 
 @app.route('/api/settings', methods=['POST'])
-@admin_required
+@permission_required('manage_settings')
 def update_settings():
     data = request.json
     conn = get_db()
@@ -743,7 +818,7 @@ def update_settings():
     return jsonify({"success": True})
 
 @app.route('/api/network/wifi/scan', methods=['GET'])
-@admin_required
+@permission_required('manage_settings')
 def api_wifi_scan():
     try:
         if platform.system() == "Windows":
@@ -766,7 +841,7 @@ def api_wifi_scan():
         return jsonify({"networks": [], "error": str(e)})
 
 @app.route('/api/network/wifi/connect', methods=['POST'])
-@admin_required
+@permission_required('manage_settings')
 def api_wifi_connect():
     data = request.json
     ssid = data.get('ssid')
@@ -838,15 +913,20 @@ def inject_user():
     user = None
     role = None
     group_id = None
+    user_perms = {}
     if 'user_id' in session:
         conn = get_db()
-        u = conn.execute("SELECT users.username, users.group_id, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        u = conn.execute("SELECT users.username, users.group_id, roles.role_name, roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
         conn.close()
         if u:
             user = u['username']
             role = u['role_name']
             group_id = u['group_id']
-    return dict(current_user=user, current_role=role, current_group_id=group_id)
+            try:
+                user_perms = json.loads(u['permissions'])
+            except:
+                user_perms = {}
+    return dict(current_user=user, current_role=role, current_group_id=group_id, user_perms=user_perms)
 
 def get_free_port(starting_port):
     import socket

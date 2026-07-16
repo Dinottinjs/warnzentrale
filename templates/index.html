@@ -51,7 +51,7 @@
             <div class="flex items-center space-x-3">
                 <div class="text-right">
                     <div id="header-user-name" class="font-bold text-sm">{{ current_user }}</div>
-                    <div class="text-xs text-neon-green">{{ current_role }}</div>
+                    <div id="header-user-role" class="text-xs text-neon-green">{{ current_role }}</div>
                     <div id="clock" class="text-xs font-mono tracking-widest text-gray-500 dark:text-gray-400">00:00:00</div>
                 </div>
                 <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-md">
@@ -79,10 +79,12 @@
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
                 <i class="fa-solid fa-gear mx-2"></i> Einstellungen
             </button>
-            {% if current_role == 'Admin' %}
+            {% if user_perms.get('all', False) or user_perms.get('manage_settings', False) %}
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap" data-tab="db">
                 <i class="fa-solid fa-database mx-2"></i> Datenbank
             </button>
+            {% endif %}
+            {% if user_perms.get('all', False) or user_perms.get('manage_system', False) %}
             <button class="tab-btn px-6 py-3 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-lg font-semibold transition-colors text-purple-500 dark:text-purple-400 whitespace-nowrap" data-tab="owner" style="text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);">
                 <i class="fa-solid fa-crown mx-2"></i> Systemsteuerung
             </button>
@@ -95,7 +97,7 @@
             <!-- Host System Stats Row -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-panel-bg p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex items-center">
-                    <div class="bg-blue-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i class="fa-brands fa-linux text-blue-600 dark:text-blue-400 text-xl"></i></div>
+                    <div class="bg-blue-100 dark:bg-gray-800 p-3 rounded-2xl mr-4"><i id="os-icon" class="fa-brands fa-linux text-blue-600 dark:text-blue-400 text-xl"></i></div>
                     <div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Betriebssystem</div>
                         <div id="os-stat" class="text-sm font-bold truncate w-32" title="...">Lade...</div>
@@ -599,8 +601,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         window.socket = io();
+        window.currentUserId = {{ session.get('user_id', 0) }};
         window.currentRole = "{{ current_role }}";
-        window.currentGroupId = {{ current_group_id | default('null') }};
+        window.currentGroupId = {{ current_group_id if current_group_id else 'null' }};
     </script>
     <script src="/static/js/app.js"></script>
 </body>

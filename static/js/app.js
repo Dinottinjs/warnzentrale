@@ -237,6 +237,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             document.getElementById('os-stat').textContent = data.os;
             document.getElementById('os-stat').title = data.os;
+            
+            const osIcon = document.getElementById('os-icon');
+            if (osIcon) {
+                if (data.os.toLowerCase().includes('windows')) {
+                    osIcon.className = 'fa-brands fa-windows text-blue-600 dark:text-blue-400 text-xl';
+                } else if (data.os.toLowerCase().includes('mac')) {
+                    osIcon.className = 'fa-brands fa-apple text-gray-800 dark:text-gray-200 text-xl';
+                } else {
+                    osIcon.className = 'fa-brands fa-linux text-yellow-600 dark:text-yellow-400 text-xl';
+                }
+            }
+            
             document.getElementById('cpu-ram-stat').textContent = `${data.cpu.toFixed(1)}% | ${data.ram_used_gb} GB / ${data.ram_total_gb} GB (${data.ram_percent}%)`;
             document.getElementById('ip-stat').textContent = data.ip;
             
@@ -573,7 +585,49 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof io !== 'undefined') {
         socket = io();
 
-        socket.on('server_message', (data) => {
+        socket.on('permissions_updated', () => {
+        if (typeof window.loadRolesMatrix === 'function') {
+            window.loadRolesMatrix();
+        }
+    });
+
+    socket.on('users_update', async () => {
+        if (typeof window.loadGroupsManagement === 'function') {
+            window.loadGroupsManagement();
+        }
+        
+        // Fetch current user details to update top right header
+        try {
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const users = await res.json();
+                const me = users.find(u => u.id === window.currentUserId);
+                if (me) {
+                    const nameEl = document.getElementById('header-user-name');
+                    if (nameEl && nameEl.textContent !== me.username) {
+                        nameEl.textContent = me.username;
+                    }
+                    // Fetch roles to get role name
+                    const rolesRes = await fetch('/api/db/roles');
+                    if (rolesRes.ok) {
+                        const roles = await rolesRes.json();
+                        const myRole = roles.find(r => r.id === me.role_id);
+                        if (myRole) {
+                            const roleEl = document.getElementById('header-user-role');
+                            if (roleEl && roleEl.textContent !== myRole.role_name) {
+                                roleEl.textContent = myRole.role_name;
+                                window.currentRole = myRole.role_name;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch(e) {
+            console.error('Failed to update current user info', e);
+        }
+    });
+
+    socket.on('server_message', (data) => {
             showToast(data.msg, data.type === 'error' ? 'error' : 'success');
         });
 
@@ -652,17 +706,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const body = document.getElementById('perm-matrix-body');
             if (!head || !body) return;
 
-            const permKeys = ['all', 'trigger_alarm', 'manage_users', 'view_only', 'manage_missions', 'edit_log', 'manage_groups', 'manage_vehicles'];
-            const permLabels = {
-                'all': 'Vollzugriff (Admin)',
-                'trigger_alarm': 'Alarm auslösen',
-                'manage_users': 'Nutzer verwalten',
-                'view_only': 'Nur Lesen',
-                'manage_missions': 'Einsätze verwalten',
-                'edit_log': 'Einsatzlog bearbeiten',
-                'manage_groups': 'Gruppen verwalten',
-                'manage_vehicles': 'Fahrzeuge/Ausrüstung verwalten'
+            const ALL_PERMISSIONS = {
+                "all": "Vollzugriff (Gott-Modus)",
+                "trigger_alarm": "Alarm auslösen",
+                "manage_users": "Nutzer verwalten",
+                "view_only": "Nur Lesen",
+                "manage_missions": "Einsätze verwalten",
+                "edit_log": "Einsatz-Protokoll bearbeiten",
+                "manage_groups": "Gruppen verwalten",
+                "manage_vehicles": "Fahrzeuge/Ausrüstung verwalten",
+                "manage_settings": "Einstellungen verwalten",
+                "manage_roles": "Rechte-Matrix verwalten",
+                "manage_system": "Systemsteuerung (Neustart/Shutdown)"
             };
+
+            const permKeys = Object.keys(ALL_PERMISSIONS);
 
             head.innerHTML = '<th class="p-4 text-left font-bold border-b border-gray-200 dark:border-gray-700">Funktion</th>' + 
                              roles.map(r => `<th class="p-4 border-b border-gray-200 dark:border-gray-700"><span class="rank-badge">${r.role_name}</span></th>`).join('');
@@ -670,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body.innerHTML = permKeys.map(key => {
                 return `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <td class="p-4 text-left font-semibold text-gray-700 dark:text-gray-300">${permLabels[key]}</td>
+                        <td class="p-4 text-left font-semibold text-gray-700 dark:text-gray-300">${ALL_PERMISSIONS[key]}</td>
                         ${roles.map(r => {
                             let perms = {};
                             try { perms = JSON.parse(r.permissions); } catch(e){}
