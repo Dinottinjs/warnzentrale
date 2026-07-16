@@ -32,15 +32,20 @@
 <body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
 
     <!-- Header -->
-    <header class="glass-panel border-b border-gray-300 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-md">
-        <div class="flex items-center space-x-4">
+    <header class="glass-panel border-b border-gray-300 dark:border-gray-800 p-4 flex items-center z-10 shadow-md relative">
+        <!-- Left: Title -->
+        <div class="flex items-center space-x-4 flex-1">
             <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center">
-                🚒 <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mx-3"></i> Warnzentrale
+                🚒 <i class="fa-solid fa-shield-halved text-red-400 mx-3"></i> Warnzentrale
             </h1>
         </div>
-        
-        <div class="flex items-center space-x-6">
-            <a href="/logout" class="text-sm text-red-500 hover:text-red-700 transition-colors"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+        <!-- Center: Role + User displayed in header-center -->
+        <div class="absolute left-1/2 transform -translate-x-1/2 text-center hidden md:block">
+            <div class="text-xs text-gray-400 uppercase tracking-widest">{{ current_role }}</div>
+        </div>
+        <!-- Right: controls -->
+        <div class="flex items-center space-x-6 flex-1 justify-end">
+            <a href="/logout" class="text-sm text-red-500 hover:text-red-400 transition-colors hover-glow-red"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
             <!-- Theme Toggle -->
             <button id="theme-toggle" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
                 <i class="fa-solid fa-moon text-xl dark:hidden"></i>
@@ -63,7 +68,7 @@
     <main class="flex-1 flex flex-col p-6 overflow-hidden">
         
         <!-- Tabs -->
-        <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
+        <div class="flex justify-center space-x-1 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
             <button class="tab-btn active px-6 py-3 glass-panel rounded-t-lg border-b-2 border-neon-green text-lg font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
                 <i class="fa-solid fa-desktop mx-2"></i> Dashboard
             </button>
@@ -136,14 +141,19 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-[400px]">
                 <!-- Leaflet Map -->
-                <div class="glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden">
+                <div class="glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden hover-glow-panel" id="map-container">
                     <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                         <h2 class="text-xl font-bold"><i class="fa-solid fa-map-location-dot mr-2 text-blue-500"></i> Live-Karte (Österreich)</h2>
-                        <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm btn-glow">
-                            <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button id="btn-expand-map" onclick="toggleMapExpand()" title="Karte vergrößern" class="text-gray-400 hover:text-white transition-colors px-2 py-1 rounded hover:bg-gray-700">
+                                <i id="map-expand-icon" class="fa-solid fa-expand"></i>
+                            </button>
+                            <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm btn-glow">
+                                <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
+                            </button>
+                        </div>
                     </div>
-                    <div id="map" class="flex-1 w-full h-full z-0"></div>
+                    <div id="map" class="flex-1 w-full z-0" style="min-height: 350px;"></div>
                 </div>
 
                 <!-- Active Events from Kumpel Software -->
@@ -684,6 +694,38 @@
         window.currentUserId = {{ session.get('user_id', 0) }};
         window.currentRole = "{{ current_role }}";
         window.currentGroupId = {{ current_group_id if current_group_id else 'null' }};
+        // Inject full permissions so JS can immediately check rights
+        window.CURRENT_PERMISSIONS = {{ user_perms | tojson | safe }};
+
+        // Map expand/collapse toggle
+        let mapExpanded = false;
+        function toggleMapExpand() {
+            const container = document.getElementById('map-container');
+            const grid = container.closest('.grid');
+            const icon = document.getElementById('map-expand-icon');
+            mapExpanded = !mapExpanded;
+            if (mapExpanded) {
+                container.style.position = 'fixed';
+                container.style.top = '0';
+                container.style.left = '0';
+                container.style.width = '100vw';
+                container.style.height = '100vh';
+                container.style.zIndex = '9999';
+                container.style.borderRadius = '0';
+                icon.className = 'fa-solid fa-compress';
+            } else {
+                container.style.position = '';
+                container.style.top = '';
+                container.style.left = '';
+                container.style.width = '';
+                container.style.height = '';
+                container.style.zIndex = '';
+                container.style.borderRadius = '';
+                icon.className = 'fa-solid fa-expand';
+            }
+            // Invalidate leaflet map size after resize
+            setTimeout(() => { if (window._leafletMap) window._leafletMap.invalidateSize(); }, 50);
+        }
     </script>
     <script src="/static/js/app.js"></script>
 </body>

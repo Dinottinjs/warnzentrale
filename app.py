@@ -418,7 +418,38 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    conn = get_db()
+    user = conn.execute(
+        "SELECT u.username, u.password_hash, u.group_id, r.role_name, r.permissions "
+        "FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?",
+        (session['user_id'],)
+    ).fetchone()
+    conn.close()
+
+    user_perms = {}
+    current_role = ""
+    current_user = session.get('username', '')
+    current_group_id = None
+    has_default_password = False
+
+    if user:
+        current_user = user['username']
+        current_role = user['role_name'] or ''
+        current_group_id = user['group_id']
+        has_default_password = check_password_hash(user['password_hash'], '122') or check_password_hash(user['password_hash'], 'ff122')
+        try:
+            user_perms = json.loads(user['permissions']) if user['permissions'] else {}
+        except Exception:
+            user_perms = {}
+
+    return render_template(
+        'index.html',
+        current_user=current_user,
+        current_role=current_role,
+        current_group_id=current_group_id,
+        has_default_password=has_default_password,
+        user_perms=user_perms
+    )
 
 # --- System Info ---
 @app.route('/api/system_info', methods=['GET'])

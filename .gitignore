@@ -1,6 +1,8 @@
 .venv/
 __pycache__/
+*.pyc
 warnzentrale.db
+data/
 *.log
 test_db.py
 static/uploads/*

@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 maxBounds: austriaBounds,
                 maxBoundsViscosity: 0.8
             });
+            window._leafletMap = map; // exposed for expand/collapse invalidation
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
