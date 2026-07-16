@@ -8,12 +8,28 @@ import subprocess
 import psutil
 import requests
 import logging
+import time
+from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
+
+# --- System Stats Background Task ---
+def sys_stats_thread():
+    while True:
+        try:
+            stats = {
+                "cpu": psutil.cpu_percent(interval=None),
+                "ram": psutil.virtual_memory().percent,
+                "disk": psutil.disk_usage('/').percent
+            }
+            socketio.emit('sys_stats', stats)
+        except Exception as e:
+            pass
+        socketio.sleep(3)
 
 # --- Logging Setup ---
 log_file = 'warnzentrale.log'
@@ -56,8 +72,15 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS groups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         group_name TEXT UNIQUE NOT NULL,
-        description TEXT
+        description TEXT,
+        color TEXT DEFAULT '#e11d48'
     )''')
+    
+    # Try to add color column if it's an old DB
+    try:
+        c.execute("ALTER TABLE groups ADD COLUMN color TEXT DEFAULT '#e11d48'")
+    except sqlite3.OperationalError:
+        pass # Column already exists
     
     # Users
     c.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -99,16 +122,51 @@ def init_db():
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
 
+    # Missions (Einsätze)
+    c.execute('''CREATE TABLE IF NOT EXISTS missions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        status TEXT DEFAULT 'active',
+        group_id INTEGER,
+        color_code TEXT DEFAULT '#e11d48',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER,
+        FOREIGN KEY(group_id) REFERENCES groups(id),
+        FOREIGN KEY(created_by) REFERENCES users(id)
+    )''')
+
+    # Vehicles / Equipment
+    c.execute('''CREATE TABLE IF NOT EXISTS vehicles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT,
+        status TEXT DEFAULT 'available',
+        current_mission_id INTEGER,
+        FOREIGN KEY(current_mission_id) REFERENCES missions(id)
+    )''')
+
+    # Mission Logs
+    c.execute('''CREATE TABLE IF NOT EXISTS mission_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mission_id INTEGER NOT NULL,
+        log_text TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        user_id INTEGER,
+        FOREIGN KEY(mission_id) REFERENCES missions(id),
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    )''')
+
     # Seed initial data
     c.execute("SELECT COUNT(*) FROM roles")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps({"all": True, "trigger_alarm": True, "manage_users": True, "view_only": True})))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps({"all": False, "trigger_alarm": True, "manage_users": False, "view_only": True})))
-        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps({"all": False, "trigger_alarm": False, "manage_users": False, "view_only": True})))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps({"all": True, "trigger_alarm": True, "manage_users": True, "view_only": True, "manage_missions": True, "edit_log": True, "manage_groups": True, "manage_vehicles": True})))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps({"all": False, "trigger_alarm": True, "manage_users": False, "view_only": True, "manage_missions": True, "edit_log": True, "manage_groups": False, "manage_vehicles": True})))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps({"all": False, "trigger_alarm": False, "manage_users": False, "view_only": True, "manage_missions": False, "edit_log": False, "manage_groups": False, "manage_vehicles": False})))
         
     c.execute("SELECT COUNT(*) FROM groups")
     if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO groups (group_name, description) VALUES (?, ?)", ("Hauptfeuerwache", "Zentrale Leitung"))
+        c.execute("INSERT INTO groups (group_name, description, color) VALUES (?, ?, ?)", ("Hauptfeuerwache", "Zentrale Leitung", "#e11d48"))
         
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
@@ -373,7 +431,7 @@ def kumpel_proxy(subpath):
 @app.route('/api/db/<table>', methods=['GET'])
 @admin_required
 def get_table(table):
-    if table not in ['users', 'roles', 'groups', 'invitations', 'settings']:
+    if table not in ['users', 'roles', 'groups', 'invitations', 'settings', 'missions', 'vehicles', 'mission_logs']:
         return jsonify({"error": "Invalid table"}), 400
     conn = get_db()
     rows = conn.execute(f"SELECT * FROM {table}").fetchall()
@@ -386,7 +444,7 @@ def add_group():
     data = request.json
     conn = get_db()
     try:
-        conn.execute("INSERT INTO groups (group_name, description) VALUES (?, ?)", (data['group_name'], data.get('description','')))
+        conn.execute("INSERT INTO groups (group_name, description, color) VALUES (?, ?, ?)", (data['group_name'], data.get('description',''), data.get('color', '#e11d48')))
         conn.commit()
         logger.info(f"Group created: {data['group_name']}")
         return jsonify({"success": True})
@@ -394,6 +452,134 @@ def add_group():
         return jsonify({"error": str(e)}), 400
     finally:
         conn.close()
+
+@app.route('/api/db/groups/<int:group_id>', methods=['PUT', 'DELETE'])
+@admin_required
+def manage_group(group_id):
+    conn = get_db()
+    try:
+        if request.method == 'DELETE':
+            conn.execute("DELETE FROM groups WHERE id = ?", (group_id,))
+            conn.execute("UPDATE users SET group_id = NULL WHERE group_id = ?", (group_id,))
+            conn.commit()
+            return jsonify({"success": True})
+        elif request.method == 'PUT':
+            data = request.json
+            conn.execute("UPDATE groups SET group_name = ?, description = ?, color = ? WHERE id = ?", 
+                         (data['group_name'], data.get('description',''), data.get('color', '#e11d48'), group_id))
+            conn.commit()
+            return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        conn.close()
+
+@app.route('/api/db/users/<int:user_id>/group', methods=['PUT'])
+@admin_required
+def update_user_group(user_id):
+    data = request.json
+    conn = get_db()
+    try:
+        conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (data.get('group_id'), user_id))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        conn.close()
+
+# --- Missions & Vehicles API ---
+@app.route('/api/missions', methods=['GET', 'POST'])
+@login_required
+def api_missions():
+    conn = get_db()
+    if request.method == 'GET':
+        rows = conn.execute("SELECT m.*, g.group_name, u.username as creator FROM missions m LEFT JOIN groups g ON m.group_id = g.id LEFT JOIN users u ON m.created_by = u.id ORDER BY m.created_at DESC").fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    elif request.method == 'POST':
+        data = request.json
+        c = conn.execute("INSERT INTO missions (title, description, group_id, color_code, created_by) VALUES (?, ?, ?, ?, ?)", 
+                         (data['title'], data.get('description',''), data.get('group_id'), data.get('color_code', '#e11d48'), session['user_id']))
+        conn.commit()
+        mission_id = c.lastrowid
+        conn.close()
+        socketio.emit('missions_update', broadcast=True)
+        return jsonify({"success": True, "mission_id": mission_id})
+
+@app.route('/api/missions/<int:mission_id>', methods=['PUT', 'DELETE'])
+@login_required
+def api_mission_detail(mission_id):
+    conn = get_db()
+    if request.method == 'DELETE':
+        conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
+        conn.execute("UPDATE vehicles SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
+        conn.execute("DELETE FROM mission_logs WHERE mission_id = ?", (mission_id,))
+        conn.commit()
+        conn.close()
+        socketio.emit('missions_update', broadcast=True)
+        return jsonify({"success": True})
+    elif request.method == 'PUT':
+        data = request.json
+        conn.execute("UPDATE missions SET title = ?, description = ?, status = ?, color_code = ? WHERE id = ?", 
+                     (data['title'], data.get('description',''), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
+        conn.commit()
+        conn.close()
+        socketio.emit('missions_update', broadcast=True)
+        return jsonify({"success": True})
+
+@app.route('/api/vehicles', methods=['GET', 'POST'])
+@login_required
+def api_vehicles():
+    conn = get_db()
+    if request.method == 'GET':
+        rows = conn.execute("SELECT * FROM vehicles").fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    elif request.method == 'POST':
+        data = request.json
+        conn.execute("INSERT INTO vehicles (name, type, status) VALUES (?, ?, ?)", 
+                     (data['name'], data.get('type',''), data.get('status','available')))
+        conn.commit()
+        conn.close()
+        socketio.emit('vehicles_update', broadcast=True)
+        return jsonify({"success": True})
+
+@app.route('/api/vehicles/<int:vehicle_id>', methods=['PUT', 'DELETE'])
+@login_required
+def api_vehicle_detail(vehicle_id):
+    conn = get_db()
+    if request.method == 'DELETE':
+        conn.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
+        conn.commit()
+        conn.close()
+        socketio.emit('vehicles_update', broadcast=True)
+        return jsonify({"success": True})
+    elif request.method == 'PUT':
+        data = request.json
+        conn.execute("UPDATE vehicles SET name = ?, type = ?, status = ?, current_mission_id = ? WHERE id = ?", 
+                     (data.get('name'), data.get('type'), data.get('status'), data.get('current_mission_id'), vehicle_id))
+        conn.commit()
+        conn.close()
+        socketio.emit('vehicles_update', broadcast=True)
+        return jsonify({"success": True})
+
+@app.route('/api/missions/<int:mission_id>/logs', methods=['GET', 'POST'])
+@login_required
+def api_mission_logs(mission_id):
+    conn = get_db()
+    if request.method == 'GET':
+        rows = conn.execute("SELECT l.*, u.username FROM mission_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.mission_id = ? ORDER BY l.timestamp ASC", (mission_id,)).fetchall()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    elif request.method == 'POST':
+        data = request.json
+        conn.execute("INSERT INTO mission_logs (mission_id, log_text, user_id) VALUES (?, ?, ?)", 
+                     (mission_id, data['log_text'], session['user_id']))
+        conn.commit()
+        conn.close()
+        socketio.emit('mission_logs_update', {"mission_id": mission_id}, broadcast=True)
+        return jsonify({"success": True})
 
 @app.route('/api/db/users/<int:user_id>', methods=['DELETE'])
 @admin_required
@@ -598,6 +784,9 @@ if __name__ == '__main__':
     run_port = 8080
     if port_row and port_row['value'].isdigit():
         run_port = int(port_row['value'])
+    
+    # Start the system stats thread
+    socketio.start_background_task(sys_stats_thread)
     
     # Use socketio.run instead of app.run
     socketio.run(app, host='0.0.0.0', port=run_port, debug=True, allow_unsafe_werkzeug=True)

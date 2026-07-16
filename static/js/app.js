@@ -446,15 +446,20 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const data = {
                 group_name: document.getElementById('group-name').value,
-                description: document.getElementById('group-desc').value
+                description: document.getElementById('group-desc').value,
+                color: document.getElementById('group-color')?.value || '#e11d48'
             };
             const res = await fetch('/api/db/groups', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
-            if(res.ok) showToast('Gruppe erstellt', 'success');
-            else showToast('Fehler', 'error');
+            if(res.ok) {
+                showToast('Gruppe erstellt', 'success');
+                if(typeof loadGroupsManagement === 'function') loadGroupsManagement();
+            } else {
+                showToast('Fehler beim Erstellen der Gruppe', 'error');
+            }
         });
     }
 
@@ -508,6 +513,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        socket.on('sys_stats', (stats) => {
+            const cpuRamEl = document.getElementById('cpu-ram-stat');
+            if(cpuRamEl) {
+                cpuRamEl.textContent = `${stats.cpu}% | ${stats.ram}% RAM | ${stats.disk}% Disk`;
+            }
+        });
+
+        socket.on('missions_update', () => {
+            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
+                loadMissions();
+            }
+        });
+
+        socket.on('vehicles_update', () => {
+            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
+                loadVehicles();
+            }
+        });
+
+        socket.on('mission_logs_update', (data) => {
+            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
+                // If the user has this mission open, reload logs
+                if (window.currentOpenMissionId === data.mission_id) {
+                    loadMissionLogs(data.mission_id);
+                }
+            }
+        });
+
         const btnRestart = document.getElementById('btn-system-restart');
         if (btnRestart) {
             btnRestart.addEventListener('click', () => {
@@ -537,12 +570,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const body = document.getElementById('perm-matrix-body');
             if (!head || !body) return;
 
-            const permKeys = ['all', 'trigger_alarm', 'manage_users', 'view_only'];
+            const permKeys = ['all', 'trigger_alarm', 'manage_users', 'view_only', 'manage_missions', 'edit_log', 'manage_groups', 'manage_vehicles'];
             const permLabels = {
                 'all': 'Vollzugriff (Admin)',
                 'trigger_alarm': 'Alarm auslösen',
                 'manage_users': 'Nutzer verwalten',
-                'view_only': 'Nur Lesen'
+                'view_only': 'Nur Lesen',
+                'manage_missions': 'Einsätze verwalten',
+                'edit_log': 'Einsatzlog bearbeiten',
+                'manage_groups': 'Gruppen verwalten',
+                'manage_vehicles': 'Fahrzeuge/Ausrüstung verwalten'
             };
 
             head.innerHTML = '<th class="p-4 text-left font-bold border-b border-gray-200 dark:border-gray-700">Funktion</th>' + 
@@ -719,6 +756,336 @@ document.addEventListener('DOMContentLoaded', () => {
             btnConnectWifi.innerHTML = '<i class="fa-solid fa-wifi mr-2"></i> Mit WLAN verbinden';
         });
     }
+
+    // === 5.6 Missions & Vehicles Logic ===
+    window.currentOpenMissionId = null;
+
+    window.loadMissions = async () => {
+        try {
+            const res = await fetch('/api/missions');
+            const missions = await res.json();
+            const list = document.getElementById('missions-list');
+            if(!list) return;
+
+            if(missions.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-500 py-4">Keine aktiven Einsätze.</div>';
+                return;
+            }
+
+            list.innerHTML = missions.map(m => `
+                <div class="p-3 border border-gray-200 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" onclick="openMissionDetail(${m.id})" style="border-left: 4px solid ${m.color_code}">
+                    <div class="font-bold truncate">${m.title}</div>
+                    <div class="text-xs text-gray-500 mt-1">${m.group_name || 'Keine Gruppe'} • ${new Date(m.created_at).toLocaleString()}</div>
+                    ${m.status === 'completed' ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Abgeschlossen</span>' : '<span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Aktiv</span>'}
+                </div>
+            `).join('');
+            
+            // Populate group select in new mission modal
+            const gRes = await fetch('/api/db/groups');
+            const groups = await gRes.json();
+            const gSelect = document.getElementById('new-mission-group');
+            if(gSelect) {
+                gSelect.innerHTML = groups.map(g => `<option value="${g.id}" data-color="${g.color || '#e11d48'}">${g.group_name}</option>`).join('');
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.loadVehicles = async () => {
+        try {
+            const res = await fetch('/api/vehicles');
+            const vehicles = await res.json();
+            
+            // Global overview table
+            const tbody = document.getElementById('global-vehicles-tbody');
+            if(tbody) {
+                tbody.innerHTML = vehicles.map(v => `
+                    <tr>
+                        <td class="p-3 font-bold">${v.name}</td>
+                        <td class="p-3">${v.type || '-'}</td>
+                        <td class="p-3">
+                            <select class="bg-transparent border-0 p-0 cursor-pointer outline-none" onchange="updateVehicleStatus(${v.id}, this.value)">
+                                <option value="available" ${v.status === 'available' ? 'selected' : ''}>Verfügbar (Frei)</option>
+                                <option value="deployed" ${v.status === 'deployed' ? 'selected' : ''}>Im Einsatz</option>
+                                <option value="maintenance" ${v.status === 'maintenance' ? 'selected' : ''}>Wartung / Defekt</option>
+                            </select>
+                        </td>
+                        <td class="p-3">${v.current_mission_id ? `Einsatz #${v.current_mission_id}` : '-'}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="deleteVehicle(${v.id})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Also update the select dropdown in mission detail view
+            if(window.currentOpenMissionId) {
+                const select = document.getElementById('assign-vehicle-select');
+                if(select) {
+                    const availableVehicles = vehicles.filter(v => !v.current_mission_id && v.status === 'available');
+                    select.innerHTML = '<option value="">Fahrzeug wählen...</option>' + availableVehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+                }
+
+                // Update the list of vehicles currently assigned to this mission
+                const assignedList = document.getElementById('mission-vehicles-list');
+                if(assignedList) {
+                    const assignedVehicles = vehicles.filter(v => v.current_mission_id === window.currentOpenMissionId);
+                    if(assignedVehicles.length === 0) {
+                        assignedList.innerHTML = '<div class="text-xs text-gray-500">Keine Fahrzeuge zugewiesen.</div>';
+                    } else {
+                        assignedList.innerHTML = assignedVehicles.map(v => `
+                            <div class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                                <span class="text-sm font-bold"><i class="fa-solid fa-truck text-red-500 mr-2"></i>${v.name}</span>
+                                <button onclick="unassignVehicle(${v.id})" class="text-xs bg-red-600 text-white px-2 py-1 rounded">Abziehen</button>
+                            </div>
+                        `).join('');
+                    }
+                }
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.loadMissionLogs = async (missionId) => {
+        try {
+            const res = await fetch(`/api/missions/${missionId}/logs`);
+            const logs = await res.json();
+            const container = document.getElementById('mission-logs-container');
+            if(container) {
+                container.innerHTML = logs.map(l => `
+                    <div>
+                        <span class="text-gray-500 dark:text-gray-400">[${new Date(l.timestamp).toLocaleTimeString()}]</span>
+                        <span class="text-blue-500 font-bold">${l.username || 'System'}:</span>
+                        <span>${l.log_text}</span>
+                    </div>
+                `).join('');
+                container.scrollTop = container.scrollHeight;
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.openMissionDetail = async (id) => {
+        window.currentOpenMissionId = id;
+        document.getElementById('mission-detail-placeholder').classList.add('hidden');
+        document.getElementById('mission-detail-view').classList.remove('hidden');
+        
+        try {
+            const res = await fetch('/api/missions');
+            const missions = await res.json();
+            const mission = missions.find(m => m.id === id);
+            
+            if(mission) {
+                document.getElementById('mission-detail-title').textContent = `Einsatz: ${mission.title}`;
+                document.getElementById('mission-detail-desc').textContent = mission.description || 'Keine Beschreibung vorhanden.';
+                
+                const btnComplete = document.getElementById('btn-complete-mission');
+                const btnDelete = document.getElementById('btn-delete-mission');
+                
+                btnComplete.classList.remove('hidden');
+                btnDelete.classList.remove('hidden');
+                
+                btnComplete.onclick = async () => {
+                    await fetch(`/api/missions/${id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({...mission, status: 'completed'})
+                    });
+                };
+
+                btnDelete.onclick = async () => {
+                    if(confirm('Diesen Einsatz wirklich löschen?')) {
+                        await fetch(`/api/missions/${id}`, { method: 'DELETE' });
+                        document.getElementById('mission-detail-placeholder').classList.remove('hidden');
+                        document.getElementById('mission-detail-view').classList.add('hidden');
+                        window.currentOpenMissionId = null;
+                    }
+                };
+
+                loadVehicles();
+                loadMissionLogs(id);
+            }
+        } catch(e) {}
+    };
+
+    const newMissionForm = document.getElementById('new-mission-form');
+    if(newMissionForm) {
+        newMissionForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const groupSelect = document.getElementById('new-mission-group');
+            const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+            
+            const data = {
+                title: document.getElementById('new-mission-title').value,
+                description: document.getElementById('new-mission-desc').value,
+                group_id: selectedOption ? selectedOption.value : null,
+                color_code: selectedOption ? selectedOption.dataset.color : '#e11d48'
+            };
+            
+            const res = await fetch('/api/missions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                const out = await res.json();
+                document.getElementById('modal-new-mission').classList.add('hidden');
+                newMissionForm.reset();
+                showToast('Einsatz erstellt', 'success');
+                openMissionDetail(out.mission_id);
+            }
+        });
+    }
+
+    const newVehicleForm = document.getElementById('new-vehicle-form');
+    if(newVehicleForm) {
+        newVehicleForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('new-vehicle-name').value,
+                type: document.getElementById('new-vehicle-type').value
+            };
+            const res = await fetch('/api/vehicles', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                document.getElementById('modal-new-vehicle').classList.add('hidden');
+                newVehicleForm.reset();
+                showToast('Fahrzeug hinzugefügt', 'success');
+            }
+        });
+    }
+
+    window.updateVehicleStatus = async (id, status) => {
+        await fetch(`/api/vehicles/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status})
+        });
+    };
+
+    window.deleteVehicle = async (id) => {
+        if(confirm('Fahrzeug wirklich löschen?')) {
+            await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
+        }
+    };
+
+    const assignVehicleBtn = document.getElementById('btn-assign-vehicle');
+    if(assignVehicleBtn) {
+        assignVehicleBtn.addEventListener('click', async() => {
+            const vId = document.getElementById('assign-vehicle-select').value;
+            if(!vId || !window.currentOpenMissionId) return;
+            
+            await fetch(`/api/vehicles/${vId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({current_mission_id: window.currentOpenMissionId, status: 'deployed'})
+            });
+            
+            // Log entry
+            await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({log_text: `Fahrzeug zugewiesen.`})
+            });
+        });
+    }
+
+    window.unassignVehicle = async (id) => {
+        await fetch(`/api/vehicles/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_mission_id: null, status: 'available'})
+        });
+        
+        if(window.currentOpenMissionId) {
+            await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({log_text: `Fahrzeug abgezogen.`})
+            });
+        }
+    };
+
+    const logForm = document.getElementById('mission-log-form');
+    if(logForm) {
+        logForm.addEventListener('submit', async(e) => {
+            e.preventDefault();
+            const input = document.getElementById('mission-log-input');
+            if(!input.value.trim() || !window.currentOpenMissionId) return;
+            
+            await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({log_text: input.value.trim()})
+            });
+            input.value = '';
+        });
+    }
+
+    window.loadGroupsManagement = async () => {
+        try {
+            const res = await fetch('/api/db/groups');
+            const groups = await res.json();
+            const tbody = document.getElementById('groups-management-tbody');
+            if(tbody) {
+                tbody.innerHTML = groups.map(g => `
+                    <tr>
+                        <td class="py-2"><input type="text" id="g-name-${g.id}" value="${g.group_name}" class="bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded p-1 w-full text-sm"></td>
+                        <td class="py-2"><input type="text" id="g-desc-${g.id}" value="${g.description || ''}" class="bg-transparent border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded p-1 w-full text-sm"></td>
+                        <td class="py-2"><input type="color" id="g-color-${g.id}" value="${g.color || '#e11d48'}" class="h-8 w-14 cursor-pointer bg-transparent border-0 p-0"></td>
+                        <td class="py-2 text-right">
+                            <button onclick="updateGroup(${g.id})" class="text-blue-500 hover:text-blue-700 mx-1"><i class="fa-solid fa-save"></i></button>
+                            <button onclick="deleteGroup(${g.id})" class="text-red-500 hover:text-red-700 mx-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.updateGroup = async (id) => {
+        const name = document.getElementById(`g-name-${id}`).value;
+        const desc = document.getElementById(`g-desc-${id}`).value;
+        const color = document.getElementById(`g-color-${id}`).value;
+        
+        const res = await fetch(`/api/db/groups/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({group_name: name, description: desc, color: color})
+        });
+        if(res.ok) {
+            showToast('Gruppe gespeichert', 'success');
+            loadGroupsManagement();
+            loadMissions(); // reload to reflect color changes if any
+        }
+    };
+
+    window.deleteGroup = async (id) => {
+        if(confirm('Gruppe wirklich löschen?')) {
+            await fetch(`/api/db/groups/${id}`, { method: 'DELETE' });
+            loadGroupsManagement();
+        }
+    };
+
+    // Initialize these new tabs if they are active
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if(btn.dataset.tab === 'missions') {
+                loadMissions();
+                loadVehicles();
+            } else if(btn.dataset.tab === 'rights') {
+                if(typeof loadGroupsManagement === 'function') loadGroupsManagement();
+            }
+        });
+    });
 
     // === 6. Init ===
     const localTheme = localStorage.getItem('theme');
