@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal enabledelayedexpansion
 title Feuerwehr Warnzentrale - Setup
 
@@ -33,7 +33,7 @@ if exist "%PROGRAMFILES%\Python314\python.exe" (
     goto :python_found
 )
 winget install -e --id Python.Python.3.14 --accept-package-agreements --accept-source-agreements >nul 2>&1
-if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" set "PYTHON_EXE9%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
+if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
 if exist "%PROGRAMFILES%\Python314\python.exe" set "PYTHON_EXE=%PROGRAMFILES%\Python314\python.exe"
 if "!PYTHON_EXE!"=="" (
     echo %RED%[FEHLER] Python wurde nicht gefunden. Bitte manuell installieren!%NC%
@@ -73,7 +73,7 @@ echo WshShell.Run """!PROJECT_DIR!\.venv\Scripts\python.exe"" ""!PROJECT_DIR!\ap
 echo.
 echo %GREEN%===================================================%NC$
 echo %GREEN%[ERFOLG] Installation abgeschlossen!%NC%
-echo Die Warmé¥ntrale startet beim naechsten Boot automatisch.
+echo Die Warnzentrale startet beim naechsten Boot automatisch.
 echo Starte Dashboard jetzt...
 echo.
 echo Lokaler Zugriff: %BLUE%http://127.0.0.1:5000%NC%
