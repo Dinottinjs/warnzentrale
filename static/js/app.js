@@ -871,14 +871,52 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Listen to live mission log updates
         socket.on('mission_logs_update', (data) => {
-            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
-                // If the user has this mission open, reload logs
-                if (window.currentOpenMissionId === data.mission_id) {
-                    loadMissionLogs(data.mission_id);
-                }
+            if (window.currentOpenMissionId === data.mission_id) {
+                loadMissionLogs(data.mission_id);
             }
         });
+
+        window.revealToken = async (btn, token) => {
+            if (!token) {
+                showToast('Kein Token vorhanden', 'info');
+                return;
+            }
+            
+            // If already showing token, hide it
+            if (btn.dataset.showing === 'true') {
+                btn.innerHTML = '<i class="fa-solid fa-key"></i>';
+                btn.dataset.showing = 'false';
+                btn.classList.replace('bg-gray-500', 'bg-blue-600');
+                btn.classList.replace('hover:bg-gray-600', 'hover:bg-blue-700');
+                return;
+            }
+
+            const pwd = prompt("Bitte Admin-Passwort eingeben, um den Token anzuzeigen:");
+            if (!pwd) return;
+
+            try {
+                const res = await fetch('/api/verify_password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pwd})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const tokenLink = window.location.origin + '/invite/' + token;
+                    // Show it inline on the button
+                    btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-eye-slash ml-1"></i>`;
+                    btn.dataset.showing = 'true';
+                    btn.classList.replace('bg-blue-600', 'bg-gray-500');
+                    btn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-600');
+                } else {
+                    showToast(data.error || 'Falsches Passwort', 'error');
+                }
+            } catch (e) {
+                showToast('Verbindungsfehler', 'error');
+            }
+        };
 
         const btnRestart = document.getElementById('btn-system-restart');
         if (btnRestart) {
@@ -1478,6 +1516,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const resUsers = await fetch('/api/users');
             const users = await resUsers.json();
             window.allUsers = users; // Cache for edit modal
+
+            // Render Members List
+            const membersListBody = document.getElementById('members-management-list');
+            if (membersListBody) {
+                membersListBody.innerHTML = users.map(u => {
+                    const dateStr = u.created_at ? new Date(u.created_at).toLocaleString('de-DE') : 'Unbekannt';
+                    return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td class="px-4 py-3 border-b dark:border-gray-700 font-bold">${u.first_name || ''} ${u.last_name || ''}</td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700">${u.username}</td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700"><span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">${u.role_name || 'Unbekannt'}</span></td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700">${u.group_name || '-'}</td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700 text-xs text-gray-500">${dateStr}</td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700 text-right space-x-2">
+                            ${window.currentRole === 'Admin' ? `<button onclick="revealToken(this, '${u.invite_token || ''}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors" title="Token anzeigen"><i class="fa-solid fa-key"></i></button>` : ''}
+                            <button onclick="openEditMemberModal(${u.id})" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-xs rounded transition-colors" title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteUser(${u.id})" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors" title="Löschen"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    `;
+                }).join('');
+            }
 
             // Populate group dropdowns
             const createGroupSelect = document.getElementById('new-user-group');

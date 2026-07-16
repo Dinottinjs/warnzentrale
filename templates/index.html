@@ -188,8 +188,8 @@
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[500px]">
                 <!-- Create Member Result Modal -->
-    <div id="new-member-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center animate-fade-in backdrop-blur-sm">
-        <div class="glass-panel w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800 scale-95 transition-transform duration-300" id="new-member-modal-content">
+    <div id="new-member-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="glass-panel w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800" id="new-member-modal-content">
             <div class="bg-neon-green p-4">
                 <h3 class="text-xl font-bold text-black flex items-center"><i class="fa-solid fa-user-check mr-2"></i> Mitglied erstellt</h3>
             </div>
@@ -453,6 +453,28 @@
                     <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Gruppen</h3>
                     <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <!-- JS injected cards -->
+                    </div>
+                </div>
+
+                <!-- Existing Members List -->
+                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
+                    <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Mitglieder</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm whitespace-nowrap">
+                            <thead class="uppercase tracking-wider border-b-2 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3">Name</th>
+                                    <th class="px-4 py-3">Benutzername</th>
+                                    <th class="px-4 py-3">Rolle</th>
+                                    <th class="px-4 py-3">Gruppe</th>
+                                    <th class="px-4 py-3">Erstellt am</th>
+                                    <th class="px-4 py-3 text-right">Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="members-management-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <!-- JS injected rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

@@ -132,6 +132,7 @@ def init_db():
         group_id INTEGER,
         role_id INTEGER,
         invite_token TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(group_id) REFERENCES groups(id),
         FOREIGN KEY(role_id) REFERENCES roles(id)
     )''')
@@ -148,6 +149,11 @@ def init_db():
     
     try:
         c.execute("ALTER TABLE users ADD COLUMN invite_token TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP")
     except sqlite3.OperationalError:
         pass # Column already exists
     
@@ -414,6 +420,18 @@ def logout():
     logger.info(f"User {session.get('username')} logged out.")
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/api/verify_password', methods=['POST'])
+@login_required
+def verify_password():
+    data = request.json
+    password = data.get('password')
+    conn = get_db()
+    user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    conn.close()
+    if user and check_password_hash(user['password_hash'], password):
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Falsches Passwort"}), 401
 
 @app.route('/')
 @login_required
@@ -786,7 +804,7 @@ def api_mission_logs(mission_id):
 def api_users():
     conn = get_db()
     if request.method == 'GET':
-        users = conn.execute("SELECT id, username, first_name, last_name, group_id, role_id FROM users").fetchall()
+        users = conn.execute("SELECT u.id, u.username, u.first_name, u.last_name, u.group_id, u.role_id, u.created_at, u.invite_token, g.group_name, r.role_name FROM users u LEFT JOIN groups g ON u.group_id = g.id LEFT JOIN roles r ON u.role_id = r.id").fetchall()
         conn.close()
         return jsonify([dict(u) for u in users])
     elif request.method == 'POST':
