@@ -320,6 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(res.ok) {
                     showToast('Profil aktualisiert', 'success');
                     document.getElementById('header-user-name').textContent = data.name;
+                    if(data.password) {
+                        alert("Das Passwort wurde erfolgreich geändert.\n\nBitte starte das gesamte System (die install.bat Konsole) neu, damit alles einwandfrei und zu 100% funktioniert!");
+                    }
                     document.getElementById('acc-password').value = '';
                 }
             } catch(e) {

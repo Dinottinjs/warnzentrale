@@ -17,22 +17,26 @@ if %errorlevel% equ 0 (
     goto :python_found
 )
 
-:: Suche in Standard-Winget-Installationspfaden
-if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
-    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+:: Suche in Standard-Winget-Installationspfaden für Python 3.14
+if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" (
+    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
     goto :python_found
 )
-if exist "%PROGRAMFILES%\Python311\python.exe" (
-    set "PYTHON_EXE=%PROGRAMFILES%\Python311\python.exe"
+if exist "%PROGRAMFILES%\Python314\python.exe" (
+    set "PYTHON_EXE=%PROGRAMFILES%\Python314\python.exe"
     goto :python_found
 )
 
-echo Installiere Python 3...
-winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
+echo Installiere Python 3.14...
+winget install -e --id Python.Python.3.14 --accept-package-agreements --accept-source-agreements
 
 :: Erneute Prüfung nach Installation
-if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
-    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+if exist "%LOCALAPPDATA%\Programs\Python\Python314\python.exe" (
+    set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python314\python.exe"
+    goto :python_found
+)
+if exist "%PROGRAMFILES%\Python314\python.exe" (
+    set "PYTHON_EXE=%PROGRAMFILES%\Python314\python.exe"
     goto :python_found
 )
 
@@ -93,7 +97,10 @@ color 0A
 echo [ERFOLG] Installation abgeschlossen!
 echo.
 echo Die Warnzentrale startet beim naechsten Boot automatisch.
-echo Um sie jetzt direkt zu starten, fuehre 'python app.py' aus.
+echo Starte Dashboard jetzt...
+start "" "http://127.0.0.1:8080"
+start "Warnzentrale Backend" ".venv\Scripts\python.exe" "app.py"
+echo.
 echo Lokaler Zugriff: http://127.0.0.1:8080
 echo ===================================================
 pause
