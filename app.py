@@ -38,16 +38,29 @@ def check_ping():
         return "Offline"
 
 def sys_stats_thread():
-    os_info = f"{platform.system()} {platform.release()}"
+    os_name = platform.system()
+    os_release = platform.release()
+    if os_name == "Windows":
+        try:
+            import sys
+            if sys.getwindowsversion().build >= 22000:
+                os_release = "11"
+        except Exception:
+            pass
+    os_info = f"{os_name} {os_release}"
+    
     ip_info = get_local_ip()
     while True:
         try:
+            mem = psutil.virtual_memory()
             stats = {
                 "os": os_info,
                 "ip": ip_info,
                 "ping": check_ping(),
                 "cpu": psutil.cpu_percent(interval=None),
-                "ram": psutil.virtual_memory().percent,
+                "ram_percent": mem.percent,
+                "ram_used_gb": round(mem.used / (1024**3), 1),
+                "ram_total_gb": round(mem.total / (1024**3), 1),
                 "disk": psutil.disk_usage('/').percent
             }
             socketio.emit('sys_stats', stats)
@@ -327,13 +340,24 @@ def system_info():
 
     cpu = psutil.cpu_percent(interval=0.1)
     ram = psutil.virtual_memory()
-    os_name = f"{platform.system()} {platform.release()}"
+    
+    os_name = platform.system()
+    os_release = platform.release()
+    if os_name == "Windows":
+        try:
+            import sys
+            if sys.getwindowsversion().build >= 22000:
+                os_release = "11"
+        except Exception:
+            pass
+    full_os_name = f"{os_name} {os_release}"
 
     return jsonify({
-        "os": os_name,
+        "os": full_os_name,
         "cpu": cpu,
-        "ram_gb": round(ram.used / (1024 ** 3), 2),
         "ram_percent": ram.percent,
+        "ram_used_gb": round(ram.used / (1024 ** 3), 1),
+        "ram_total_gb": round(ram.total / (1024 ** 3), 1),
         "ip": local_ip,
         "internet": ping_status
     })
@@ -541,9 +565,9 @@ def api_missions():
 def api_mission_detail(mission_id):
     conn = get_db()
     if request.method == 'DELETE':
-        conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
-        conn.execute("UPDATE vehicles SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
         conn.execute("DELETE FROM mission_logs WHERE mission_id = ?", (mission_id,))
+        conn.execute("UPDATE vehicles SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
+        conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
         conn.commit()
         conn.close()
         socketio.emit('missions_update', broadcast=True)
@@ -609,7 +633,24 @@ def api_mission_logs(mission_id):
         conn.close()
         socketio.emit('mission_logs_update', {"mission_id": mission_id}, broadcast=True)
         return jsonify({"success": True})
+@app.route('/api/users', methods=['GET'])
+@login_required
+def api_users():
+    conn = get_db()
+    users = conn.execute("SELECT id, username, group_id, role_id FROM users").fetchall()
+    conn.close()
+    return jsonify([dict(u) for u in users])
 
+@app.route('/api/users/<int:user_id>/group', methods=['PUT'])
+@admin_required
+def update_user_group(user_id):
+    data = request.json
+    new_group_id = data.get('group_id')
+    conn = get_db()
+    conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (new_group_id, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 @app.route('/api/db/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def delete_user(user_id):

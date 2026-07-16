@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             document.getElementById('os-stat').textContent = data.os;
             document.getElementById('os-stat').title = data.os;
-            document.getElementById('cpu-ram-stat').textContent = `${data.cpu.toFixed(1)}% | ${data.ram_gb}GB (${data.ram_percent}%)`;
+            document.getElementById('cpu-ram-stat').textContent = `${data.cpu.toFixed(1)}% | ${data.ram_used_gb} GB / ${data.ram_total_gb} GB (${data.ram_percent}%)`;
             document.getElementById('ip-stat').textContent = data.ip;
             
             const pingEl = document.getElementById('ping-stat');
@@ -598,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.on('sys_stats', (stats) => {
             const cpuRamEl = document.getElementById('cpu-ram-stat');
             if(cpuRamEl) {
-                cpuRamEl.textContent = `${stats.cpu}% | ${stats.ram}% RAM | ${stats.disk}% Disk`;
+                cpuRamEl.textContent = `${stats.cpu}% | ${stats.ram_used_gb} GB / ${stats.ram_total_gb} GB (${stats.ram_percent}%)`;
             }
         });
 
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="p-3 font-bold">${v.name}</td>
                         <td class="p-3">${v.type || '-'}</td>
                         <td class="p-3">
-                            <select class="bg-transparent border-0 p-0 cursor-pointer outline-none" onchange="updateVehicleStatus(${v.id}, this.value)">
+                            <select class="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 p-1 rounded cursor-pointer outline-none" onchange="updateVehicleStatus(${v.id}, this.value)">
                                 <option value="available" ${v.status === 'available' ? 'selected' : ''}>Verfügbar (Frei)</option>
                                 <option value="deployed" ${v.status === 'deployed' ? 'selected' : ''}>Im Einsatz</option>
                                 <option value="maintenance" ${v.status === 'maintenance' ? 'selected' : ''}>Wartung / Defekt</option>
@@ -1025,14 +1025,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const groupSelect = document.getElementById('new-mission-group');
             const selectedOption = groupSelect.options[groupSelect.selectedIndex];
-            const address = document.getElementById('new-mission-address').value;
+            const plz = document.getElementById('new-mission-plz').value.trim();
+            const city = document.getElementById('new-mission-city').value.trim();
+            const street = document.getElementById('new-mission-street').value.trim();
+            const hnr = document.getElementById('new-mission-hnr').value.trim();
+            
+            const address = `${street} ${hnr}, ${plz} ${city}`;
             
             let lat = null;
             let lng = null;
 
             if (address) {
                 try {
-                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=at`);
                     const geoData = await geoRes.json();
                     if (geoData && geoData.length > 0) {
                         lat = parseFloat(geoData[0].lat);
@@ -1182,10 +1187,47 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch('/api/db/groups');
             const groups = await res.json();
+            
+            const resUsers = await fetch('/api/users');
+            const users = await resUsers.json();
+
             const grid = document.getElementById('groups-management-grid');
             if(grid) {
-                grid.innerHTML = groups.map(g => `
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden flex flex-col h-full">
+                    let membersHtml = '';
+                    if (users) {
+                        const groupMembers = users.filter(u => u.group_id === g.id);
+                        const otherUsers = users.filter(u => u.group_id !== g.id);
+                        
+                        let memberList = groupMembers.map(u => `
+                            <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded mb-1 border border-gray-200 dark:border-gray-700">
+                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${u.username}</span>
+                                <button onclick="removeUserFromGroup(${u.id})" class="text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-user-minus"></i></button>
+                            </div>
+                        `).join('');
+                        
+                        if (groupMembers.length === 0) {
+                            memberList = `<div class="text-xs text-gray-500 italic mb-2">Keine Mitglieder in dieser Gruppe.</div>`;
+                        }
+
+                        let addDropdown = `<select id="add-user-${g.id}" class="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded p-1 text-sm outline-none mb-2">
+                            <option value="">+ Mitglied hinzufügen...</option>
+                            ${otherUsers.map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
+                        </select>
+                        <button onclick="addUserToGroup(${g.id})" class="w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors text-sm font-semibold py-1 rounded">Hinzufügen</button>`;
+
+                        membersHtml = `
+                            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-2">Mitglieder</label>
+                                <div class="mb-3 max-h-32 overflow-y-auto pr-1 space-y-1">
+                                    ${memberList}
+                                </div>
+                                ${addDropdown}
+                            </div>
+                        `;
+                    }
+
+                    return `
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg transition-shadow relative overflow-hidden flex flex-col h-full">
                         <div class="absolute top-0 left-0 w-2 h-full" style="background-color: ${g.color || '#e11d48'}"></div>
                         <div class="pl-4 flex-1">
                             <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-1">Name</label>
@@ -1194,17 +1236,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-1">Beschreibung</label>
                             <input type="text" id="g-desc-${g.id}" value="${g.description || ''}" class="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-2 w-full mb-4 focus:border-neon-green outline-none transition-colors">
                             
-                            <div class="flex items-center space-x-3 mb-6">
+                            <div class="flex items-center space-x-3">
                                 <label class="text-sm font-bold text-gray-700 dark:text-gray-300">Farbe:</label>
                                 <input type="color" id="g-color-${g.id}" value="${g.color || '#e11d48'}" class="h-10 w-16 cursor-pointer bg-transparent border-0 p-0 rounded">
                             </div>
+                            
+                            ${membersHtml}
                         </div>
-                        <div class="pl-4 mt-auto flex space-x-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <button onclick="updateGroup(${g.id})" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-bold shadow transition-colors"><i class="fa-solid fa-save mr-2"></i>Speichern</button>
-                            <button onclick="deleteGroup(${g.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-bold shadow transition-colors"><i class="fa-solid fa-trash mr-2"></i>Löschen</button>
+                        <div class="pl-4 mt-auto flex space-x-2 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4">
+                            <button onclick="updateGroup(${g.id})" class="flex-1 bg-blue-600 hover:bg-blue-500 hover:-translate-y-0.5 text-white py-2 rounded text-sm font-bold shadow transition-all"><i class="fa-solid fa-save mr-2"></i>Speichern</button>
+                            <button onclick="deleteGroup(${g.id})" class="flex-1 bg-red-600 hover:bg-red-500 hover:-translate-y-0.5 text-white py-2 rounded text-sm font-bold shadow transition-all"><i class="fa-solid fa-trash mr-2"></i>Löschen</button>
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             }
         } catch(e) {
             console.error(e);
@@ -1233,6 +1277,30 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetch(`/api/db/groups/${id}`, { method: 'DELETE' });
             loadGroupsManagement();
         }
+    };
+
+    window.removeUserFromGroup = async (userId) => {
+        if (confirm('Benutzer aus dieser Gruppe entfernen? (Wird der Standardgruppe 1 zugewiesen)')) {
+            await fetch(`/api/users/${userId}/group`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({group_id: 1})
+            });
+            loadGroupsManagement();
+        }
+    };
+
+    window.addUserToGroup = async (groupId) => {
+        const select = document.getElementById(`add-user-${groupId}`);
+        const userId = select.value;
+        if (!userId) return;
+        
+        await fetch(`/api/users/${userId}/group`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({group_id: groupId})
+        });
+        loadGroupsManagement();
     };
 
     // Initialize these new tabs if they are active
