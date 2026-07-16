@@ -1,0 +1,24 @@
+{"timestamp": "2026-07-16 20:03:44,350", "level": "WARNING", "message": "Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead."}
+{"timestamp": "2026-07-16 20:03:44,362", "level": "INFO", "message": "[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.29:5000"}
+{"timestamp": "2026-07-16 20:03:44,362", "level": "INFO", "message": "[33mPress CTRL+C to quit[0m"}
+{"timestamp": "2026-07-16 20:05:47,502", "level": "WARNING", "message": "Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead."}
+{"timestamp": "2026-07-16 20:05:47,511", "level": "INFO", "message": "[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.29:5000"}
+{"timestamp": "2026-07-16 20:05:47,511", "level": "INFO", "message": "[33mPress CTRL+C to quit[0m"}
+{"timestamp": "2026-07-16 20:19:26,545", "level": "WARNING", "message": "Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead."}
+{"timestamp": "2026-07-16 20:19:26,553", "level": "INFO", "message": "[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.29:5000"}
+{"timestamp": "2026-07-16 20:19:26,553", "level": "INFO", "message": "[33mPress CTRL+C to quit[0m"}
+{"timestamp": "2026-07-16 20:19:30,746", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:30] "GET /socket.io/?EIO=4&transport=polling&t=Pzi9xev HTTP/1.1" 200 -"}
+{"timestamp": "2026-07-16 20:19:30,749", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:30] "POST /socket.io/?EIO=4&transport=polling&t=Pzi9xey&sid=fitITKyV0oL11ubSAAAA HTTP/1.1" 200 -"}
+{"timestamp": "2026-07-16 20:19:30,750", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:30] "GET /socket.io/?EIO=4&transport=polling&t=Pzi9xey.0&sid=fitITKyV0oL11ubSAAAA HTTP/1.1" 200 -"}
+{"timestamp": "2026-07-16 20:19:31,429", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:31] "GET /socket.io/?EIO=4&transport=polling&t=Pzi9xpb HTTP/1.1" 200 -"}
+{"timestamp": "2026-07-16 20:19:31,432", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:31] "POST /socket.io/?EIO=4&transport=polling&t=Pzi9xpd&sid=c9zpxPMe5ey8YSiqAAAC HTTP/1.1" 200 -"}
+{"timestamp": "2026-07-16 20:19:31,434", "level": "INFO", "message": "127.0.0.1 - - [16/Jul/2026 20:19:31] "GET /socket.io/?EIO=4&transport=polling&t=Pzi9xpe&sid=c9zpxPMe5ey8YSiqAAAC HTTP/1.1" 200 -"}

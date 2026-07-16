@@ -557,6 +557,102 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    window.deleteUser = async (id) => {
+        if (!confirm('Dieses Mitglied wirklich löschen?')) return;
+        try {
+            const res = await fetch(`/api/db/users/${id}`, { method: 'DELETE' });
+            if(res.ok) {
+                showToast('Mitglied gelöscht', 'success');
+            } else {
+                showToast('Fehler beim Löschen', 'error');
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.openEditMemberModal = (id) => {
+        const user = window.allUsers.find(u => u.id === id);
+        if (!user) return;
+        document.getElementById('edit-member-id').value = user.id;
+        document.getElementById('edit-member-firstname').value = user.first_name || '';
+        document.getElementById('edit-member-lastname').value = user.last_name || '';
+        document.getElementById('edit-member-username').value = user.username || '';
+        document.getElementById('edit-member-group').value = user.group_id || '';
+        document.getElementById('edit-member-modal').classList.remove('hidden');
+    };
+
+    window.closeModal = (modalId) => {
+        document.getElementById(modalId).classList.add('hidden');
+    };
+
+    // Form handlers
+    const createUserForm = document.getElementById('create-user-form');
+    if (createUserForm) {
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const first_name = document.getElementById('new-user-firstname').value;
+            const last_name = document.getElementById('new-user-lastname').value;
+            const group_id = document.getElementById('new-user-group').value || null;
+            
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({first_name, last_name, group_id})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    createUserForm.reset();
+                    document.getElementById('new-member-username').textContent = data.username;
+                    const tokenLink = window.location.origin + '/invite/' + data.token;
+                    document.getElementById('new-member-token').value = tokenLink;
+                    document.getElementById('new-member-modal').classList.remove('hidden');
+                } else {
+                    showToast(data.error || 'Fehler beim Erstellen', 'error');
+                }
+            } catch(err) {
+                console.error(err);
+                showToast('Verbindungsfehler', 'error');
+            }
+        });
+    }
+
+    const editMemberForm = document.getElementById('edit-member-form');
+    if (editMemberForm) {
+        editMemberForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-member-id').value;
+            const payload = {
+                first_name: document.getElementById('edit-member-firstname').value,
+                last_name: document.getElementById('edit-member-lastname').value,
+                username: document.getElementById('edit-member-username').value,
+                group_id: document.getElementById('edit-member-group').value || null
+            };
+            try {
+                const res = await fetch(`/api/db/users/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if(res.ok) {
+                    showToast('Mitglied aktualisiert', 'success');
+                    closeModal('edit-member-modal');
+                } else {
+                    showToast('Fehler beim Aktualisieren', 'error');
+                }
+            } catch(err) {
+                console.error(err);
+            }
+        });
+    }
+
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Kopiert!', 'success');
+        });
+    };
+
     const inviteForm = document.getElementById('invite-form');
     if(inviteForm) {
         inviteForm.addEventListener('submit', async(e) => {
@@ -1248,6 +1344,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const resUsers = await fetch('/api/users');
             const users = await resUsers.json();
+            window.allUsers = users; // Cache for edit modal
+
+            // Populate group dropdowns
+            const createGroupSelect = document.getElementById('new-user-group');
+            if (createGroupSelect) {
+                createGroupSelect.innerHTML = '<option value="">(Keine Gruppe)</option>' + groups.map(g => `<option value="${g.id}">${g.group_name}</option>`).join('');
+            }
+            const editGroupSelect = document.getElementById('edit-member-group');
+            if (editGroupSelect) {
+                editGroupSelect.innerHTML = '<option value="">(Keine Gruppe)</option>' + groups.map(g => `<option value="${g.id}">${g.group_name}</option>`).join('');
+            }
 
             const grid = document.getElementById('groups-management-grid');
             if(grid) {
@@ -1259,8 +1366,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         let memberList = groupMembers.map(u => `
                             <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded mb-1 border border-gray-200 dark:border-gray-700">
-                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">${u.username}</span>
-                                <button onclick="removeUserFromGroup(${u.id})" class="text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-user-minus"></i></button>
+                                <span class="text-sm font-semibold text-gray-800 dark:text-gray-200" title="${u.first_name || ''} ${u.last_name || ''}">${u.username}</span>
+                                <div class="flex space-x-2">
+                                    <button onclick="openEditMemberModal(${u.id})" class="text-xs text-blue-500 hover:text-blue-700"><i class="fa-solid fa-pen"></i></button>
+                                    <button onclick="removeUserFromGroup(${u.id})" class="text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-user-minus"></i></button>
+                                    <button onclick="deleteUser(${u.id})" class="text-xs text-red-700 hover:text-red-900"><i class="fa-solid fa-trash"></i></button>
+                                </div>
                             </div>
                         `).join('');
                         
@@ -1308,6 +1419,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                 `}).join('');
+                
+                // Add an "Ungruppiert" card for users without a group
+                const unassignedUsers = users.filter(u => !u.group_id);
+                if (unassignedUsers.length > 0) {
+                    let unassignedList = unassignedUsers.map(u => `
+                        <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700/50 p-2 rounded mb-1 border border-gray-200 dark:border-gray-700">
+                            <span class="text-sm font-semibold text-gray-800 dark:text-gray-200" title="${u.first_name || ''} ${u.last_name || ''}">${u.username}</span>
+                            <div class="flex space-x-2">
+                                <button onclick="openEditMemberModal(${u.id})" class="text-xs text-blue-500 hover:text-blue-700"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteUser(${u.id})" class="text-xs text-red-700 hover:text-red-900"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    grid.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md relative overflow-hidden flex flex-col">
+                        <div class="absolute top-0 left-0 w-2 h-full bg-gray-400"></div>
+                        <div class="pl-4 flex-1">
+                            <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-1">Ungruppiert</label>
+                            <div class="text-lg font-bold mb-4 text-gray-600 dark:text-gray-400">Mitglieder ohne Gruppe</div>
+                            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <label class="text-xs text-gray-500 uppercase font-bold tracking-wider block mb-2">Mitglieder</label>
+                                <div class="mb-3 max-h-32 overflow-y-auto pr-1 space-y-1">
+                                    ${unassignedList}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
             }
         } catch(e) {
             console.error(e);

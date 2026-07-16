@@ -123,15 +123,33 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
+        first_name TEXT,
+        last_name TEXT,
         password_hash TEXT NOT NULL,
         email TEXT,
         profile_picture_path TEXT,
         theme TEXT DEFAULT 'dark',
         group_id INTEGER,
         role_id INTEGER,
+        invite_token TEXT,
         FOREIGN KEY(group_id) REFERENCES groups(id),
         FOREIGN KEY(role_id) REFERENCES roles(id)
     )''')
+    
+    # Schema upgrade for existing users table
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN first_name TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN last_name TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN invite_token TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
     
     # Invitations
     c.execute('''CREATE TABLE IF NOT EXISTS invitations (
@@ -254,8 +272,8 @@ def init_db():
     c.execute("SELECT COUNT(*) FROM users")
     if c.fetchone()[0] == 0:
         pwd_hash = generate_password_hash("122")
-        c.execute("INSERT INTO users (username, password_hash, role_id, group_id, theme, profile_picture_path) VALUES (?, ?, 1, 1, 'dark', '')", 
-                  ("admin", pwd_hash))
+        c.execute("INSERT INTO users (username, first_name, last_name, password_hash, role_id, group_id, theme, profile_picture_path) VALUES (?, ?, ?, ?, 1, 1, 'dark', '')", 
+                  ("admin", "Admin", "User", pwd_hash))
                   
     # Seed Settings
     c.execute("SELECT COUNT(*) FROM settings")
@@ -352,6 +370,24 @@ def set_setting(key, value):
     conn.close()
 
 # --- Routes ---
+
+@app.route('/invite/<token>', methods=['GET'])
+def invite_login(token):
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE invite_token = ?", (token,)).fetchone()
+    if user:
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        # Remove token so it's one-time use
+        conn.execute("UPDATE users SET invite_token = NULL WHERE id = ?", (user['id'],))
+        conn.commit()
+        conn.close()
+        logger.info(f"User '{user['username']}' logged in via invite token.")
+        # Optional check if we want to flash a warning
+        return redirect(url_for('index'))
+    else:
+        conn.close()
+        return "Ungültiger oder abgelaufener Link.", 400
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -705,13 +741,78 @@ def api_mission_logs(mission_id):
         conn.close()
         socketio.emit('mission_logs_update', {"mission_id": mission_id}, broadcast=True)
         return jsonify({"success": True})
-@app.route('/api/users', methods=['GET'])
+@app.route('/api/users', methods=['GET', 'POST'])
 @login_required
 def api_users():
     conn = get_db()
-    users = conn.execute("SELECT id, username, group_id, role_id FROM users").fetchall()
-    conn.close()
-    return jsonify([dict(u) for u in users])
+    if request.method == 'GET':
+        users = conn.execute("SELECT id, username, first_name, last_name, group_id, role_id FROM users").fetchall()
+        conn.close()
+        return jsonify([dict(u) for u in users])
+    elif request.method == 'POST':
+        # Need manage_users permission
+        user_roles = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        if not user_roles:
+            conn.close()
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        perms = json.loads(user_roles['permissions']) if user_roles['permissions'] else {}
+        if not perms.get('all') and not perms.get('manage_users'):
+            conn.close()
+            return jsonify({"error": "Forbidden"}), 403
+            
+        data = request.json
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        group_id = data.get('group_id')
+        
+        if not first_name or not last_name:
+            conn.close()
+            return jsonify({"error": "Vor- und Nachname erforderlich."}), 400
+            
+        base_username = (first_name[:3] + last_name[:3]).capitalize()
+        username = base_username
+        
+        # Ensure unique username
+        counter = 1
+        while conn.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone():
+            counter += 1
+            username = f"{base_username}{counter}"
+            
+        import uuid
+        invite_token = str(uuid.uuid4())
+        pwd_hash = generate_password_hash("ff122")
+        
+        conn.execute("INSERT INTO users (username, first_name, last_name, password_hash, role_id, group_id, invite_token) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                     (username, first_name, last_name, pwd_hash, 3, group_id, invite_token))
+        conn.commit()
+        conn.close()
+        socketio.emit('users_update', broadcast=True)
+        return jsonify({
+            "success": True, 
+            "username": username,
+            "token": invite_token
+        })
+
+@app.route('/api/db/users/<int:user_id>', methods=['PUT', 'DELETE'])
+@permission_required('manage_users')
+def manage_user(user_id):
+    conn = get_db()
+    if request.method == 'DELETE':
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        logger.info(f"User ID {user_id} deleted.")
+        socketio.emit('users_update', broadcast=True)
+        return jsonify({"success": True})
+    elif request.method == 'PUT':
+        data = request.json
+        conn.execute("UPDATE users SET username = COALESCE(?, username), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), group_id = COALESCE(?, group_id) WHERE id = ?", 
+                     (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), user_id))
+        conn.commit()
+        conn.close()
+        socketio.emit('users_update', broadcast=True)
+        return jsonify({"success": True})
 
 @app.route('/api/users/<int:user_id>/group', methods=['PUT'])
 @permission_required('manage_users')
@@ -722,16 +823,6 @@ def update_user_group_id(user_id):
     conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (new_group_id, user_id))
     conn.commit()
     conn.close()
-    socketio.emit('users_update', broadcast=True)
-    return jsonify({"success": True})
-@app.route('/api/db/users/<int:user_id>', methods=['DELETE'])
-@permission_required('manage_users')
-def delete_user(user_id):
-    conn = get_db()
-    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-    logger.info(f"User ID {user_id} deleted.")
     socketio.emit('users_update', broadcast=True)
     return jsonify({"success": True})
 
@@ -914,19 +1005,21 @@ def inject_user():
     role = None
     group_id = None
     user_perms = {}
+    has_default_password = False
     if 'user_id' in session:
         conn = get_db()
-        u = conn.execute("SELECT users.username, users.group_id, roles.role_name, roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        u = conn.execute("SELECT users.username, users.group_id, users.password_hash, roles.role_name, roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
         conn.close()
         if u:
             user = u['username']
             role = u['role_name']
             group_id = u['group_id']
+            has_default_password = check_password_hash(u['password_hash'], 'ff122')
             try:
                 user_perms = json.loads(u['permissions'])
             except:
                 user_perms = {}
-    return dict(current_user=user, current_role=role, current_group_id=group_id, user_perms=user_perms)
+    return dict(current_user=user, current_role=role, current_group_id=group_id, user_perms=user_perms, has_default_password=has_default_password)
 
 def get_free_port(starting_port):
     import socket
