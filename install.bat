@@ -64,7 +64,8 @@ echo.
 :: 3. Install Requirements
 echo [3/5] Installiere Abhaengigkeiten (Flask, psutil, requests, pillow, uvicorn, fastapi)...
 call .venv\Scripts\activate
-pip install -r requirements.txt >nul 2>&1
+python -m pip install --upgrade pip --disable-pip-version-check -q >nul 2>&1
+pip install -r requirements.txt --disable-pip-version-check -q >nul 2>&1
 if %errorlevel% neq 0 (
     color 0C
     echo [FEHLER] Abhaengigkeiten konnten nicht installiert werden.

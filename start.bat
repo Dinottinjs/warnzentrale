@@ -12,7 +12,15 @@ cd /d "%~dp0"
 
 :: 1. Update from GitHub
 echo [1/3] Pruefe auf Updates (GitHub)...
-if exist ".git" (
+if not exist ".git" (
+    echo [HINWEIS] Kein lokales Git-Repository gefunden. Initialisiere fuer zukuenftige Updates...
+    git init >nul 2>&1
+    git remote add origin https://github.com/Dinottinjs/warnzentrale.git >nul 2>&1
+    git fetch >nul 2>&1
+    git branch -M main >nul 2>&1
+    git reset --hard origin/main >nul 2>&1
+    echo [HINWEIS] Repository initialisiert und auf neuesten Stand gebracht.
+) else (
     git pull origin main > git_output.txt 2>&1
     findstr /C:"Already up to date." git_output.txt > nul
     if !errorlevel! equ 0 (
@@ -31,8 +39,6 @@ if exist ".git" (
         )
     )
     if exist git_output.txt del git_output.txt
-) else (
-    echo [HINWEIS] Kein Git-Repository gefunden. Auto-Update wird uebersprungen.
 )
 echo.
 
@@ -44,7 +50,8 @@ if not exist ".venv\Scripts\activate.bat" (
 )
 call .venv\Scripts\activate.bat
 echo [HINWEIS] Umgebung aktiv. Installiere ggf. fehlende Pakete...
-pip install -r requirements.txt -q
+python -m pip install --upgrade pip --disable-pip-version-check -q >nul 2>&1
+pip install -r requirements.txt --disable-pip-version-check -q
 echo.
 
 :: 3. Start Application

@@ -32,7 +32,8 @@ echo -e "${GREEN}[OK] Virtuelle Umgebung erstellt.${NC}\n"
 # 3. Install Requirements
 echo -e "[3/5] Installiere Abhängigkeiten..."
 source .venv/bin/activate
-pip install -r requirements.txt > /dev/null 2>&1
+python3 -m pip install --upgrade pip --disable-pip-version-check > /dev/null 2>&1
+pip install -r requirements.txt --disable-pip-version-check > /dev/null 2>&1
 echo -e "${GREEN}[OK] Module erfolgreich installiert.${NC}\n"
 
 # 4. Initialize DB
