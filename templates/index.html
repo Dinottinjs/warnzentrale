@@ -418,47 +418,50 @@
         <div id="tab-rights" class="tab-content hidden flex-1 glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Gruppen</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Group Management Form -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl">
-                    <h3 class="font-bold text-lg mb-4">Neue Gruppe erstellen</h3>
-                    <form id="group-form" class="space-y-4">
-                        <input type="text" id="group-name" placeholder="Gruppenname (z.B. Löschzug 2)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
-                        <input type="text" id="group-desc" placeholder="Beschreibung" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
-                        
-                        <div class="flex items-center space-x-2">
-                            <label class="text-sm font-medium text-gray-700 dark:text-gray-400">Gruppenfarbe:</label>
-                            <input type="color" id="group-color" value="#e11d48" class="h-8 w-14 cursor-pointer bg-transparent border-0 p-0">
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full">
+                    <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Neue Gruppe erstellen</h3>
+                    <form id="group-form" class="space-y-4 flex-1 flex flex-col justify-between">
+                        <div class="space-y-4">
+                            <input type="text" id="group-name" placeholder="Gruppenname (z.B. Löschzug 2)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                            <input type="text" id="group-desc" placeholder="Beschreibung" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
+                            <div class="flex items-center space-x-2">
+                                <label class="text-sm font-medium text-gray-700 dark:text-gray-400">Gruppenfarbe:</label>
+                                <input type="color" id="group-color" value="#e11d48" class="h-8 w-14 cursor-pointer bg-transparent border-0 p-0">
+                            </div>
                         </div>
-
-                        <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded w-full">Gruppe anlegen</button>
+                        <button type="submit" class="bg-gray-800 hover:bg-black text-white py-2 px-4 rounded shadow transition-colors mt-4">Gruppe anlegen</button>
                     </form>
                 </div>
 
                 <!-- Create Member -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl">
-                    <h3 class="font-bold text-lg mb-4">Neues Mitglied anlegen</h3>
-                    <form id="create-user-form" class="space-y-4">
-                        <input type="text" id="new-user-firstname" placeholder="Vorname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
-                        <input type="text" id="new-user-lastname" placeholder="Nachname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
-                        <select id="new-user-group" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
-                            <option value="">(Keine Gruppe)</option>
-                        </select>
-                        <button type="submit" class="bg-neon-green text-black font-bold py-2 px-4 rounded w-full">Mitglied anlegen</button>
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full">
+                    <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-user-plus mr-2"></i> Neues Mitglied anlegen</h3>
+                    <form id="create-user-form" class="space-y-4 flex-1 flex flex-col justify-between">
+                        <div class="space-y-4">
+                            <input type="text" id="new-user-firstname" placeholder="Vorname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                            <input type="text" id="new-user-lastname" placeholder="Nachname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                            <select id="new-user-group" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
+                                <option value="">(Keine Gruppe)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold py-2 px-4 rounded shadow transition-all mt-4">Mitglied anlegen</button>
                     </form>
                 </div>
+            </div>
 
-                <!-- Existing Groups List -->
-                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl">
-                    <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Gruppen</h3>
-                    <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <!-- JS injected cards -->
-                    </div>
+            <!-- Existing Groups List -->
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
+                <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-folder-open mr-2"></i> Vorhandene Gruppen</h3>
+                <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- JS injected cards -->
                 </div>
+            </div>
 
-                <!-- Existing Members List -->
-                <div class="md:col-span-3 bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
-                    <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">Vorhandene Mitglieder</h3>
+            <!-- Existing Members List -->
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
+                <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-address-book mr-2"></i> Vorhandene Mitglieder</h3>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-left text-sm whitespace-nowrap">
                             <thead class="uppercase tracking-wider border-b-2 dark:border-gray-700">
@@ -619,24 +622,12 @@
                                     <input type="text" id="sys-domain" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
                                 </div>
                             </div>
-
-                            <div class="glass-panel p-6 mb-8 relative">
-                                <h4 class="text-xl font-bold mb-4 text-neon-green flex items-center">
-                                    <i class="fas fa-sync-alt mr-2"></i> System-Update
-                                </h4>
-                                <p class="text-sm text-gray-400 mb-4">
-                                    Hier kannst du prüfen, ob auf GitHub eine neuere Version der Warnzentrale zur Verfügung steht. Falls ja, wird diese heruntergeladen, installiert und das System startet automatisch neu.
-                                </p>
-                                <button type="button" id="btn-system-update" class="px-4 py-2 bg-neon-green text-dark-bg font-bold rounded shadow-[0_0_15px_rgba(57,255,20,0.4)] hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all">
-                                    <i class="fas fa-download mr-2"></i> Auf Updates prüfen & installieren
-                                </button>
                             </div>
 
-                            <div class="md:col-span-2">
-                                    <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
-                                        <i class="fa-solid fa-save mr-2"></i> Konfiguration speichern
-                                    </button>
-                                </div>
+                            <div class="md:col-span-2 mt-6">
+                                <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
+                                    <i class="fa-solid fa-save mr-2"></i> Konfiguration speichern
+                                </button>
                             </div>
 
                             <!-- WLAN / LAN Selector -->
@@ -702,7 +693,7 @@
                 <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md">
                     <h3 class="text-xl font-bold mb-4 text-purple-500 dark:text-purple-400"><i class="fa-solid fa-server mr-2"></i> Systemsteuerung</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Verwalte den Status des Dashboards direkt. Ein Neustart übernimmt Konfigurationsänderungen.</p>
-                    <div class="flex space-x-4">
+                    <div class="flex flex-wrap gap-4">
                         <button id="btn-system-restart" class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl font-bold transition-all shadow-lg hover:shadow-yellow-500/50">
                             <i class="fa-solid fa-rotate-right mr-2"></i> System Neustarten
                         </button>
@@ -710,6 +701,16 @@
                             <i class="fa-solid fa-power-off mr-2"></i> System Herunterfahren
                         </button>
                     </div>
+
+                    <h4 class="text-xl font-bold mt-8 mb-4 text-neon-green flex items-center">
+                        <i class="fas fa-sync-alt mr-2"></i> In-App Update
+                    </h4>
+                    <p class="text-sm text-gray-400 mb-4">
+                        Hier kannst du prüfen, ob auf GitHub eine neuere Version der Warnzentrale zur Verfügung steht. Falls ja, wird diese heruntergeladen, installiert und das System startet automatisch neu.
+                    </p>
+                    <button type="button" id="btn-system-update" class="px-4 py-2 bg-neon-green text-dark-bg font-bold rounded shadow-[0_0_15px_rgba(57,255,20,0.4)] hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all">
+                        <i class="fas fa-download mr-2"></i> Auf Updates prüfen & installieren
+                    </button>
                 </div>
 
                 <!-- Live Logs -->
@@ -748,8 +749,8 @@
 
     </main>
 
-    <footer class="mt-8 mb-4 text-center text-xs text-gray-500 dark:text-gray-400">
-        <p>&copy; 2026 Urheber: Maximilian Holzer. Diese Website ist für Demo-Zwecke entwickelt worden.</p>
+    <footer class="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
+        &copy; 2026 Urheber: Maximilian Holzer. Diese Website ist für Demo-Zwecke entwickelt worden.
     </footer>
 
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>

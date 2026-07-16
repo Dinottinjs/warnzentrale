@@ -201,7 +201,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
-            // Map is loaded without the blackout bounding box.
+            // Fetch Austria boundary to grey out the rest of the world
+            fetch('https://nominatim.openstreetmap.org/search?country=Austria&polygon_geojson=1&format=json')
+                .then(res => res.json())
+                .then(data => {
+                    if(data && data[0] && data[0].geojson) {
+                        const worldCoords = [
+                            [90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]
+                        ];
+                        let coords = [worldCoords];
+                        
+                        const geojsonCoords = data[0].geojson.coordinates;
+                        if (data[0].geojson.type === 'Polygon') {
+                            coords.push(geojsonCoords[0].map(c => [c[1], c[0]]));
+                        } else if (data[0].geojson.type === 'MultiPolygon') {
+                            geojsonCoords.forEach(poly => {
+                                coords.push(poly[0].map(c => [c[1], c[0]]));
+                            });
+                        }
+                        
+                        L.polygon(coords, {
+                            color: 'transparent',
+                            fillColor: '#000',
+                            fillOpacity: 0.65,
+                            fillRule: 'evenodd'
+                        }).addTo(map);
+                    }
+                })
+                .catch(err => console.error('Error fetching Austria boundary', err));
+
             setTimeout(() => {
                 if (map) map.invalidateSize();
             }, 500);

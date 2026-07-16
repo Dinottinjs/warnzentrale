@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal enabledelayedexpansion
 title Feuerwehr Warnzentrale - Setup
 
@@ -73,7 +73,7 @@ echo WshShell.Run """!PROJECT_DIR!\.venv\Scripts\python.exe"" ""!PROJECT_DIR!\ap
 echo.
 echo %GREEN%===================================================%NC$
 echo %GREEN%[ERFOLG] Installation abgeschlossen!%NC%
-echo Die Warm�ntrale startet beim naechsten Boot automatisch.
+echo Die Warmé¥ntrale startet beim naechsten Boot automatisch.
 echo Starte Dashboard jetzt...
 echo.
 echo Lokaler Zugriff: %BLUE%http://127.0.0.1:5000%NC%
