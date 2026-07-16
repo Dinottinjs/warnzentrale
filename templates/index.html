@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feuerwehr Warnzentrale</title>
+    <title>Feuerwehr Haupt-Dashboard</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -14,36 +14,46 @@
                     colors: {
                         'dark-bg': '#0a0a0a',
                         'panel-bg': '#1a1a1a',
-                        'neon-green': '#39ff14',
-                        'fire-red': '#ff0000',
-                        'warning-yellow': '#ffcc00'
+                        'neon-green': '#22c55e',
+                        'fire-red': '#e11d48'
                     }
                 }
             }
         }
     </script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/static/css/style.css">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-dark-bg text-gray-200 font-sans h-screen flex flex-col overflow-hidden">
+<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
 
     <!-- Header -->
-    <header class="bg-panel-bg border-b border-gray-800 p-4 flex justify-between items-center z-10 shadow-md">
+    <header class="bg-white dark:bg-panel-bg border-b border-gray-300 dark:border-gray-800 p-4 flex justify-between items-center z-10 shadow-md">
         <div class="flex items-center space-x-4">
-            <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-100 flex items-center">
-                <i class="fa-solid fa-shield-halved text-gray-400 mr-3"></i> Warnzentrale
+            <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center">
+                <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mr-3"></i> Warnzentrale
             </h1>
-            <div id="test-mode-indicator" class="hidden">
-                <span class="bg-warning-yellow text-black px-3 py-1 rounded-full font-bold text-sm animate-pulse flex items-center">
-                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> TEST-MODUS AKTIV
-                </span>
-            </div>
         </div>
         
-        <div class="flex flex-col items-end">
-            <div id="clock" class="text-xl font-mono tracking-widest text-gray-300">00:00:00</div>
-            <div id="system-status" class="text-lg font-bold text-neon-green uppercase mt-1">BEREITSCHAFT</div>
+        <div class="flex items-center space-x-6">
+            <a href="/logout" class="text-sm text-red-500 hover:text-red-700 transition-colors"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            <!-- Theme Toggle -->
+            <button id="theme-toggle" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
+                <i class="fa-solid fa-moon text-xl dark:hidden"></i>
+                <i class="fa-solid fa-sun text-xl hidden dark:block"></i>
+            </button>
+
+            <!-- User Info -->
+            <div class="flex items-center space-x-3">
+                <div class="text-right">
+                    <div id="header-user-name" class="font-bold text-sm">{{ current_user }}</div>
+                    <div class="text-xs text-neon-green">{{ current_role }}</div>
+                    <div id="clock" class="text-xs font-mono tracking-widest text-gray-500 dark:text-gray-400">00:00:00</div>
+                </div>
+                <img id="header-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-green object-cover shadow-sm">
+            </div>
         </div>
     </header>
 
@@ -51,161 +61,214 @@
     <main class="flex-1 flex flex-col p-6 overflow-hidden">
         
         <!-- Tabs -->
-        <div class="flex space-x-2 mb-6">
-            <button class="tab-btn active px-6 py-2 bg-panel-bg rounded-t-lg border-b-2 border-neon-green font-semibold transition-colors text-white" data-tab="monitor">
-                <i class="fa-solid fa-desktop mr-2"></i> Warn-Monitor
+        <div class="flex space-x-2 mb-6 border-b border-gray-300 dark:border-gray-800 overflow-x-auto pb-1">
+            <button class="tab-btn active px-6 py-2 bg-white dark:bg-panel-bg rounded-t-lg border-b-2 border-neon-green font-semibold transition-colors text-gray-800 dark:text-white whitespace-nowrap" data-tab="dashboard">
+                <i class="fa-solid fa-desktop mr-2"></i> Dashboard
             </button>
-            <button class="tab-btn px-6 py-2 bg-panel-bg rounded-t-lg border-b-2 border-transparent hover:text-white hover:bg-gray-800 font-semibold transition-colors text-gray-400" data-tab="settings">
-                <i class="fa-solid fa-server mr-2"></i> Server-Einstellungen
+            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="link">
+                <i class="fa-solid fa-link mr-2"></i> Kumpel-Verknüpfung
             </button>
+            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="rights">
+                <i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Rechte
+            </button>
+            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-gray-500 dark:text-gray-400 whitespace-nowrap" data-tab="account">
+                <i class="fa-solid fa-user-gear mr-2"></i> Account
+            </button>
+            {% if current_role == 'Admin' %}
+            <button class="tab-btn px-6 py-2 bg-transparent rounded-t-lg border-b-2 border-transparent hover:bg-gray-200 dark:hover:bg-gray-800 font-semibold transition-colors text-red-500 dark:text-red-400 whitespace-nowrap" data-tab="db">
+                <i class="fa-solid fa-database mr-2"></i> Datenbank-Management
+            </button>
+            {% endif %}
         </div>
 
-        <!-- Tab Content: Monitor -->
-        <div id="tab-monitor" class="tab-content flex-1 flex flex-col space-y-6 overflow-y-auto">
+        <!-- Tab Content: Dashboard -->
+        <div id="tab-dashboard" class="tab-content flex-1 flex flex-col space-y-6 overflow-y-auto">
             
-            <!-- System Stats Row -->
-            <div class="grid grid-cols-3 gap-6">
-                <div class="bg-panel-bg p-4 rounded-xl border border-gray-800 shadow-lg flex items-center">
-                    <div class="bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-microchip text-blue-400 text-xl"></i></div>
+            <!-- Host System Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
+                    <div class="bg-blue-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-brands fa-linux text-blue-600 dark:text-blue-400 text-xl"></i></div>
                     <div>
-                        <div class="text-sm text-gray-400">CPU-Auslastung</div>
-                        <div id="cpu-stat" class="text-xl font-bold">0%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Betriebssystem</div>
+                        <div id="os-stat" class="text-sm font-bold truncate w-32" title="...">Lade...</div>
                     </div>
                 </div>
-                <div class="bg-panel-bg p-4 rounded-xl border border-gray-800 shadow-lg flex items-center">
-                    <div class="bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-memory text-purple-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
+                    <div class="bg-purple-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-microchip text-purple-600 dark:text-purple-400 text-xl"></i></div>
                     <div>
-                        <div class="text-sm text-gray-400">RAM-Auslastung</div>
-                        <div id="ram-stat" class="text-xl font-bold">0%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">CPU & RAM</div>
+                        <div id="cpu-ram-stat" class="text-sm font-bold">0% | 0GB</div>
                     </div>
                 </div>
-                <div class="bg-panel-bg p-4 rounded-xl border border-gray-800 shadow-lg flex items-center">
-                    <div class="bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-network-wired text-green-400 text-xl"></i></div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
+                    <div class="bg-green-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-network-wired text-green-600 dark:text-green-400 text-xl"></i></div>
                     <div>
-                        <div class="text-sm text-gray-400">Netzwerk</div>
-                        <div id="net-stat" class="text-xl font-bold">Verbunden</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Netzwerk IP</div>
+                        <div id="ip-stat" class="text-sm font-bold">127.0.0.1</div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-panel-bg p-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center">
+                    <div class="bg-yellow-100 dark:bg-gray-800 p-3 rounded-lg mr-4"><i class="fa-solid fa-globe text-yellow-600 dark:text-yellow-400 text-xl"></i></div>
+                    <div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Internet Ping</div>
+                        <div id="ping-stat" class="text-sm font-bold">Prüfe...</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Active Events -->
-            <div class="bg-panel-bg flex-1 rounded-xl border border-gray-800 shadow-lg p-6 flex flex-col">
-                <h2 class="text-xl font-bold mb-4 border-b border-gray-700 pb-2"><i class="fa-solid fa-bell mr-2"></i> Aktuelle Meldungen</h2>
-                <div id="events-container" class="flex-1 overflow-y-auto space-y-3">
-                    <div class="text-gray-500 text-center mt-10 italic">Warte auf Daten...</div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-[400px]">
+                <!-- Leaflet Map -->
+                <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+                    <h2 class="text-lg font-bold p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"><i class="fa-solid fa-map-location-dot mr-2"></i> Live-Karte (Österreich)</h2>
+                    <div id="map" class="flex-1 w-full h-full z-0"></div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Tab Content: Settings -->
-        <div id="tab-settings" class="tab-content hidden flex-1 bg-panel-bg rounded-xl border border-gray-800 shadow-lg p-6 overflow-y-auto">
-            <h2 class="text-2xl font-bold mb-6 border-b border-gray-700 pb-3"><i class="fa-solid fa-sliders mr-2"></i> System-Konfiguration</h2>
-            
-            <form id="settings-form" class="space-y-8">
-                
-                <!-- Operating Mode Section -->
-                <section class="bg-black/30 p-5 rounded-lg border border-gray-800">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-300">Betriebsmodus</h3>
-                    <div class="flex items-center mb-4">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="mode-toggle" class="sr-only peer">
-                            <div class="w-14 h-7 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-neon-green"></div>
-                            <span class="ml-3 text-sm font-medium" id="mode-label">Test-Modus (Simulator)</span>
-                        </label>
+                <!-- Active Events from Kumpel Software -->
+                <div class="bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center">
+                        <h2 class="text-lg font-bold"><i class="fa-solid fa-tower-broadcast mr-2"></i> Verknüpfte Live-Einsätze</h2>
+                        <span id="kumpel-status-badge" class="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-xs rounded-full font-bold">Getrennt</span>
                     </div>
-                </section>
-
-                <!-- Live API Settings Section -->
-                <section id="api-settings-section" class="bg-black/30 p-5 rounded-lg border border-gray-800 opacity-50 pointer-events-none transition-opacity">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-300">Live-API Konfiguration</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">API Endpunkt URL</label>
-                            <input type="url" id="api-url" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none" placeholder="https://api.example.com/v1/events">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Abfrage-Intervall (Sekunden)</label>
-                            <input type="number" id="poll-interval" min="1" max="3600" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none" value="5">
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-400 mb-1">API Security Token (Bearer)</label>
-                            <div class="relative">
-                                <input type="password" id="api-key" class="w-full bg-gray-900 border border-gray-700 rounded p-2 pr-10 text-white focus:border-neon-green focus:outline-none" placeholder="Token hier einfügen...">
-                                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300">
-                                    <i class="fa-solid fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 flex items-center">
-                        <button type="button" id="test-connection-btn" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded border border-gray-600 transition-colors">
-                            <i class="fa-solid fa-plug mr-2"></i> Verbindung testen
-                        </button>
-                        <span id="test-connection-result" class="ml-4 text-sm font-bold"></span>
-                    </div>
-                </section>
-
-                <!-- Network Settings Section -->
-                <section class="bg-black/30 p-5 rounded-lg border border-gray-800">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-300">Netzwerk-Konfiguration (Simuliert)</h3>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Verbindungstyp</label>
-                            <select id="net-type" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none">
-                                <option value="LAN">LAN (Ethernet)</option>
-                                <option value="WLAN">WLAN (WiFi)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">IP-Zuweisung</label>
-                            <select id="net-method" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none">
-                                <option value="DHCP">DHCP (Automatisch)</option>
-                                <option value="Static">Statisch</option>
-                            </select>
-                        </div>
+                    <div id="events-container" class="flex-1 overflow-y-auto p-4 space-y-3">
+                        <div class="text-gray-500 text-center mt-10 italic">Warte auf Verbindung zum Kumpel-System...</div>
                     </div>
-
-                    <div id="wlan-settings" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 hidden">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">SSID</label>
-                            <input type="text" id="net-ssid" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">WLAN-Passwort</label>
-                            <input type="password" id="net-password" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none">
-                        </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex space-x-3">
+                        <button id="btn-stop-audio" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded font-bold shadow transition-colors opacity-50 cursor-not-allowed" disabled>
+                            <i class="fa-solid fa-stop mr-2"></i> Audio Stopp
+                        </button>
                     </div>
+                </div>
+            </div>
+        </div>
 
-                    <div id="static-ip-settings" class="grid grid-cols-1 md:grid-cols-3 gap-6 hidden">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">IP-Adresse</label>
-                            <input type="text" id="net-ip" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none" placeholder="192.168.1.100">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Subnetzmaske</label>
-                            <input type="text" id="net-subnet" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none" placeholder="255.255.255.0">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Gateway</label>
-                            <input type="text" id="net-gateway" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-neon-green focus:outline-none" placeholder="192.168.1.1">
-                        </div>
+        <!-- Tab Content: Link Settings (Kumpel Software) -->
+        <div id="tab-link" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-2"><i class="fa-solid fa-link mr-2"></i> Kumpel-System Verknüpfung</h2>
+            <p class="text-gray-500 dark:text-gray-400 mb-6">Verbinde dieses Haupt-Dashboard mit dem externen Alarmdurchsage-System.</p>
+            
+            <form id="link-form" class="space-y-6 max-w-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">IP-Adresse / Hostname</label>
+                        <input type="text" id="kumpel-ip" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
                     </div>
-                </section>
-
-                <div class="flex justify-end pt-4">
-                    <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold py-3 px-8 rounded shadow-lg transition-colors">
-                        <i class="fa-solid fa-save mr-2"></i> Einstellungen speichern
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Port</label>
+                        <input type="number" id="kumpel-port" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">API-Passwort</label>
+                        <input type="password" id="kumpel-password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none">
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4 pt-4">
+                    <button type="submit" class="bg-gray-800 hover:bg-black text-white dark:bg-gray-700 dark:hover:bg-gray-600 px-6 py-2 rounded shadow transition-colors">
+                        <i class="fa-solid fa-save mr-2"></i> Speichern
                     </button>
+                    <button type="button" id="btn-test-link" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                        <i class="fa-solid fa-plug mr-2"></i> Verbindung testen & verknüpfen
+                    </button>
+                    <span id="link-test-result" class="text-sm font-bold ml-2"></span>
                 </div>
             </form>
         </div>
 
+        <!-- Tab Content: Rechte -->
+        <div id="tab-rights" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Gruppen</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Group Management -->
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <h3 class="font-bold text-lg mb-4">Neue Gruppe erstellen</h3>
+                    <form id="group-form" class="space-y-4">
+                        <input type="text" id="group-name" placeholder="Gruppenname (z.B. Löschzug 2)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                        <input type="text" id="group-desc" placeholder="Beschreibung" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
+                        <button type="submit" class="bg-gray-800 text-white py-2 px-4 rounded w-full">Gruppe anlegen</button>
+                    </form>
+                </div>
+
+                <!-- Invites -->
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <h3 class="font-bold text-lg mb-4">Einladung generieren</h3>
+                    <form id="invite-form" class="space-y-4">
+                        <input type="email" id="invite-email" placeholder="E-Mail (optional)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
+                        <button type="submit" class="bg-neon-green text-black font-bold py-2 px-4 rounded w-full">Token erstellen</button>
+                    </form>
+                    <div id="invite-result" class="mt-4 p-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded text-center hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Content: DB Admin -->
+        {% if current_role == 'Admin' %}
+        <div id="tab-db" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold text-red-500 mb-6"><i class="fa-solid fa-database mr-2"></i> Datenbank-Editor (Admin)</h2>
+            <div class="flex space-x-2 mb-4">
+                <button class="db-select-btn px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded font-bold" data-table="users">Users</button>
+                <button class="db-select-btn px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded" data-table="roles">Roles</button>
+                <button class="db-select-btn px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded" data-table="groups">Groups</button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-left">
+                    <thead class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" id="db-thead">
+                        <tr><th class="p-3">Wähle eine Tabelle aus.</th></tr>
+                    </thead>
+                    <tbody id="db-tbody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tab Content: Account Settings -->
+        <div id="tab-account" class="tab-content hidden flex-1 bg-white dark:bg-panel-bg rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-user-gear mr-2"></i> Account Einstellungen</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <form id="account-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Anzeigename</label>
+                        <input type="text" id="acc-name" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Neues Passwort (optional)</label>
+                        <input type="password" id="acc-password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="Leer lassen um es nicht zu ändern">
+                    </div>
+                    
+                    <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors">
+                        <i class="fa-solid fa-save mr-2"></i> Profil aktualisieren
+                    </button>
+                </form>
+
+                <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/30">
+                    <img id="preview-avatar" src="/static/uploads/default.png" onerror="this.src='https://ui-avatars.com/api/?name={{ current_user }}&background=random'" class="w-32 h-32 rounded-full border-4 border-gray-200 dark:border-gray-800 object-cover mb-4 shadow-lg">
+                    
+                    <form id="avatar-form" class="flex flex-col items-center w-full">
+                        <label class="block w-full cursor-pointer bg-gray-800 hover:bg-black text-white dark:bg-gray-800 dark:hover:bg-gray-700 text-center py-2 rounded shadow transition-colors mb-2">
+                            <i class="fa-solid fa-upload mr-2"></i> Neues Bild auswählen
+                            <input type="file" id="avatar-input" accept="image/png, image/jpeg" class="hidden">
+                        </label>
+                        <span id="avatar-filename" class="text-xs text-gray-500 dark:text-gray-400 mb-4 truncate w-full text-center">Kein Bild ausgewählt</span>
+                        <button type="submit" id="btn-upload-avatar" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-colors hidden">
+                            <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Bild hochladen
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
     </main>
 
-    <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>
 
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

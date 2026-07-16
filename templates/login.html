@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Warnzentrale</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { 'dark-bg': '#0a0a0a', 'panel-bg': '#1a1a1a', 'neon-green': '#22c55e' } } } }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-200 h-screen flex items-center justify-center transition-colors">
+    <div class="bg-white dark:bg-panel-bg p-8 rounded-xl shadow-lg w-full max-w-md border border-gray-200 dark:border-gray-800">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center justify-center">
+                <i class="fa-solid fa-shield-halved text-gray-500 dark:text-gray-400 mr-3"></i> Warnzentrale
+            </h1>
+            <p class="text-sm text-gray-500 mt-2">Bitte melde dich an.</p>
+        </div>
+        
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Benutzername</label>
+                <input type="text" id="username" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Passwort</label>
+                <input type="password" id="password" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" required>
+            </div>
+            <div id="error-msg" class="text-red-500 text-sm hidden"></div>
+            <button type="submit" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold py-2 px-4 rounded shadow transition-colors">
+                Login
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const err = document.getElementById('error-msg');
+            
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: u, password: p})
+                });
+                const data = await res.json();
+                if(data.success) {
+                    window.location.href = '/';
+                } else {
+                    err.textContent = data.error;
+                    err.classList.remove('hidden');
+                }
+            } catch(e) {
+                err.textContent = "Netzwerkfehler";
+                err.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,127 +1,397 @@
 import os
 import json
-import random
-import time
+import sqlite3
+import socket
+import platform
+import subprocess
 import psutil
 import requests
-from flask import Flask, render_template, jsonify, request
+from functools import wraps
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from PIL import Image
 
 app = Flask(__name__)
-CONFIG_FILE = 'config.json'
+app.secret_key = 'super_secret_dashboard_key_v3'
 
-def load_config():
-    if not os.path.exists(CONFIG_FILE):
-        default_config = {
-            "mode": "test",
-            "api_url": "https://api.example.com/data",
-            "api_key": "",
-            "poll_interval": 5,
-            "network": {
-                "type": "LAN",
-                "method": "DHCP",
-                "ip": "",
-                "subnet": "",
-                "gateway": "",
-                "ssid": "",
-                "password": ""
-            }
-        }
-        save_config(default_config)
-        return default_config
-    with open(CONFIG_FILE, 'r') as f:
-        return json.load(f)
+DB_FILE = 'warnzentrale.db'
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+api_session = requests.Session()
+
+# --- Database Setup ---
+def get_db():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
+    
+    # Roles
+    c.execute('''CREATE TABLE IF NOT EXISTS roles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role_name TEXT UNIQUE NOT NULL,
+        permissions TEXT NOT NULL
+    )''')
+    
+    # Groups
+    c.execute('''CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_name TEXT UNIQUE NOT NULL,
+        description TEXT
+    )''')
+    
+    # Users
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        email TEXT,
+        profile_picture_path TEXT,
+        theme TEXT DEFAULT 'dark',
+        group_id INTEGER,
+        role_id INTEGER,
+        FOREIGN KEY(group_id) REFERENCES groups(id),
+        FOREIGN KEY(role_id) REFERENCES roles(id)
+    )''')
+    
+    # Invitations
+    c.execute('''CREATE TABLE IF NOT EXISTS invitations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        token TEXT UNIQUE NOT NULL,
+        role_id INTEGER,
+        group_id INTEGER,
+        status TEXT DEFAULT 'pending',
+        expires_at DATETIME
+    )''')
+    
+    # Settings (for Kumpel API etc)
+    c.execute('''CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )''')
+    
+    # Events history cache
+    c.execute('''CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY,
+        type TEXT,
+        desc TEXT,
+        status TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Seed initial data
+    c.execute("SELECT COUNT(*) FROM roles")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Admin", json.dumps(["all"])))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Operator", json.dumps(["trigger_alarm", "view_only"])))
+        c.execute("INSERT INTO roles (role_name, permissions) VALUES (?, ?)", ("Mitglied", json.dumps(["view_only"])))
+        
+    c.execute("SELECT COUNT(*) FROM groups")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO groups (group_name, description) VALUES (?, ?)", ("Hauptfeuerwache", "Zentrale Leitung"))
+        
+    c.execute("SELECT COUNT(*) FROM users")
+    if c.fetchone()[0] == 0:
+        # Default admin: password '122'
+        pwd_hash = generate_password_hash("122")
+        c.execute("INSERT INTO users (username, password_hash, role_id, group_id, theme, profile_picture_path) VALUES (?, ?, 1, 1, 'dark', '')", 
+                  ("admin", pwd_hash))
+                  
+    # Seed Settings
+    c.execute("SELECT COUNT(*) FROM settings")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_ip', '127.0.0.1')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_port', '8122')")
+        c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_password', '122')")
+        
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- Auth Decorators ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        conn = get_db()
+        user = conn.execute("SELECT roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        conn.close()
+        if not user or user['role_name'] != 'Admin':
+            return jsonify({"error": "Forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Settings Helper ---
+def get_setting(key, default=""):
+    conn = get_db()
+    val = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return val['value'] if val else default
+
+def set_setting(key, value):
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+    conn.close()
+
+# --- Routes ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password_hash'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return jsonify({"success": True})
+        return jsonify({"success": False, "error": "Ungültige Anmeldedaten"}), 401
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
-@app.route('/api/status', methods=['GET'])
-def get_status():
+# --- System Info ---
+@app.route('/api/system_info', methods=['GET'])
+@login_required
+def system_info():
+    ping_status = "Offline"
+    try:
+        if platform.system().lower() == "windows":
+            output = subprocess.run(["ping", "-n", "1", "-w", "1000", "8.8.8.8"], capture_output=True)
+        else:
+            output = subprocess.run(["ping", "-c", "1", "-W", "1", "8.8.8.8"], capture_output=True)
+        if output.returncode == 0:
+            ping_status = "Online"
+    except:
+        pass
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('10.255.255.255', 1))
+        local_ip = s.getsockname()[0]
+    except Exception:
+        local_ip = '127.0.0.1'
+    finally:
+        s.close()
+
+    cpu = psutil.cpu_percent(interval=0.1)
+    ram = psutil.virtual_memory()
+    os_name = f"{platform.system()} {platform.release()}"
+
     return jsonify({
-        "cpu": psutil.cpu_percent(interval=None),
-        "ram": psutil.virtual_memory().percent,
-        "network": "Verbunden" # Dummy status
+        "os": os_name,
+        "cpu": cpu,
+        "ram_gb": round(ram.used / (1024 ** 3), 2),
+        "ram_percent": ram.percent,
+        "ip": local_ip,
+        "internet": ping_status
     })
 
-@app.route('/api/settings', methods=['GET', 'POST'])
-def settings():
+# --- Account ---
+@app.route('/api/account', methods=['GET', 'POST'])
+@login_required
+def account():
+    conn = get_db()
     if request.method == 'POST':
-        config = load_config()
         data = request.json
-        config.update(data)
-        save_config(config)
-        return jsonify({"status": "success"})
-    return jsonify(load_config())
-
-@app.route('/api/live-data', methods=['GET'])
-def live_data():
-    config = load_config()
-    mode = config.get("mode", "test")
+        if "name" in data and data["name"]:
+            conn.execute("UPDATE users SET username = ? WHERE id = ?", (data["name"], session['user_id']))
+            session['username'] = data["name"]
+        if "password" in data and data["password"]:
+            pwd_hash = generate_password_hash(data["password"])
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pwd_hash, session['user_id']))
+        if "theme" in data:
+            conn.execute("UPDATE users SET theme = ? WHERE id = ?", (data["theme"], session['user_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
     
-    if mode == "test":
-        # Generate random test dummy data
-        events = [
-            {"id": 1, "type": "B02", "desc": "Freiflächenbrand klein", "status": "ALARM"},
-            {"id": 2, "type": "T01", "desc": "Technische Hilfeleistung", "status": "WARNUNG"},
-            {"id": 3, "type": "B04", "desc": "Wohnungsbrand", "status": "ALARM"},
-            {"id": 4, "type": "T03", "desc": "Verkehrsunfall", "status": "INFO"}
-        ]
-        active_events = random.sample(events, k=random.randint(0, 3))
-        status = "ALARM" if any(e["status"] == "ALARM" for e in active_events) else "BEREITSCHAFT"
-        
-        return jsonify({
-            "status": status,
-            "events": active_events,
-            "mode": "test"
-        })
-    else:
-        # Live mode
-        api_url = config.get("api_url")
-        api_key = config.get("api_key")
-        
-        if not api_url:
-            return jsonify({"status": "ERROR", "error": "Keine API-URL konfiguriert", "mode": "live", "events": []})
-        
-        headers = {}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-            
-        try:
-            response = requests.get(api_url, headers=headers, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-            return jsonify({
-                "status": data.get("status", "BEREITSCHAFT"),
-                "events": data.get("events", []),
-                "mode": "live"
-            })
-        except Exception as e:
-            return jsonify({"status": "ERROR", "error": str(e), "mode": "live", "events": []})
-
-@app.route('/api/test-connection', methods=['POST'])
-def test_connection():
-    data = request.json
-    api_url = data.get("api_url")
-    api_key = data.get("api_key")
+    user = conn.execute("SELECT username, email, profile_picture_path as avatar, theme FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+    conn.close()
     
-    if not api_url:
-        return jsonify({"success": False, "message": "Keine API-URL angegeben."})
-        
-    headers = {}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
-        
+    # We must convert row to dict manually
+    return jsonify({
+        "name": user["username"],
+        "email": user["email"],
+        "avatar": user["avatar"],
+        "theme": user["theme"]
+    })
+
+@app.route('/api/account/avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    if 'avatar' not in request.files: return jsonify({"error": "No file"}), 400
+    file = request.files['avatar']
+    if file.filename == '': return jsonify({"error": "No file"}), 400
+    
     try:
-        response = requests.get(api_url, headers=headers, timeout=5)
-        response.raise_for_status()
-        return jsonify({"success": True, "message": "Verbindung erfolgreich."})
+        img = Image.open(file)
+        img.verify()
+        file.seek(0)
+        
+        filename = f"user_{session['user_id']}_{secure_filename(file.filename)}"
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        
+        conn = get_db()
+        conn.execute("UPDATE users SET profile_picture_path = ? WHERE id = ?", (filename, session['user_id']))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "filename": filename})
     except Exception as e:
-        return jsonify({"success": False, "message": f"Fehler: {str(e)}"})
+        return jsonify({"error": "Invalid image"}), 400
+
+# --- Kumpel Proxy ---
+def get_kumpel_url(path):
+    ip = get_setting("kumpel_ip", "127.0.0.1")
+    port = get_setting("kumpel_port", "8122")
+    return f"http://{ip}:{port}{path}"
+
+@app.route('/api/kumpel/config', methods=['GET', 'POST'])
+@admin_required
+def kumpel_config():
+    if request.method == 'POST':
+        data = request.json
+        if "ip" in data: set_setting('kumpel_ip', data['ip'])
+        if "port" in data: set_setting('kumpel_port', data['port'])
+        if "password" in data: set_setting('kumpel_password', data['password'])
+        return jsonify({"success": True})
+    return jsonify({
+        "ip": get_setting("kumpel_ip"),
+        "port": get_setting("kumpel_port"),
+        "password": "" # Hidden
+    })
+
+@app.route('/api/kumpel/test', methods=['POST'])
+@admin_required
+def kumpel_test():
+    pwd = get_setting("kumpel_password")
+    try:
+        url = get_kumpel_url('/api/login')
+        res = api_session.post(url, json={"password": pwd}, timeout=5)
+        res.raise_for_status()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/kumpel/<path:subpath>', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def kumpel_proxy(subpath):
+    url = get_kumpel_url(f"/api/{subpath}")
+    try:
+        if request.method == 'GET':
+            res = api_session.get(url, params=request.args, timeout=5)
+            # Sync to local db if history
+            if subpath == 'history' and res.ok:
+                data = res.json()
+                events = data.get('events', data) if isinstance(data, dict) else data
+                conn = get_db()
+                for ev in events:
+                    if isinstance(ev, dict) and 'id' in ev:
+                        conn.execute("INSERT OR REPLACE INTO events (id, type, desc, status) VALUES (?, ?, ?, ?)", 
+                                     (ev['id'], ev.get('type',''), ev.get('desc',''), ev.get('status','')))
+                conn.commit()
+                conn.close()
+        elif request.method == 'POST':
+            res = api_session.post(url, json=request.json, timeout=5)
+        elif request.method == 'DELETE':
+            res = api_session.delete(url, timeout=5)
+            
+        return (res.content, res.status_code, res.headers.items())
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# --- DB Management & Rights (Admin) ---
+@app.route('/api/db/<table>', methods=['GET'])
+@admin_required
+def get_table(table):
+    if table not in ['users', 'roles', 'groups', 'invitations']:
+        return jsonify({"error": "Invalid table"}), 400
+    conn = get_db()
+    rows = conn.execute(f"SELECT * FROM {table}").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/db/groups', methods=['POST'])
+@admin_required
+def add_group():
+    data = request.json
+    conn = get_db()
+    try:
+        conn.execute("INSERT INTO groups (group_name, description) VALUES (?, ?)", (data['group_name'], data.get('description','')))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        conn.close()
+
+@app.route('/api/db/users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_user(user_id):
+    conn = get_db()
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/invitations', methods=['POST'])
+@admin_required
+def create_invitation():
+    import uuid
+    data = request.json
+    token = str(uuid.uuid4())
+    conn = get_db()
+    conn.execute("INSERT INTO invitations (email, token, role_id, group_id) VALUES (?, ?, ?, ?)", 
+                 (data.get('email',''), token, data.get('role_id',3), data.get('group_id',1)))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "token": token})
+
+# --- Direct User Context injection ---
+@app.context_processor
+def inject_user():
+    user = None
+    role = None
+    if 'user_id' in session:
+        conn = get_db()
+        u = conn.execute("SELECT users.username, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        conn.close()
+        if u:
+            user = u['username']
+            role = u['role_name']
+    return dict(current_user=user, current_role=role)
 
 if __name__ == '__main__':
-    load_config()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
