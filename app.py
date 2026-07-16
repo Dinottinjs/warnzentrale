@@ -860,5 +860,18 @@ if __name__ == '__main__':
     # Start the system stats thread
     socketio.start_background_task(sys_stats_thread)
     
+    print("\n" + "="*50)
+    print(f"🚀 WARNZENTRALE LOKAL ERREICHBAR UNTER:")
+    print(f"👉 http://127.0.0.1:{run_port}")
+    print("="*50 + "\n")
+
     # Use socketio.run instead of app.run
-    socketio.run(app, host='0.0.0.0', port=run_port, debug=True, allow_unsafe_werkzeug=True)
+    try:
+        socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)
+    except OSError as e:
+        if "in use" in str(e).lower() or "zugriff verweigert" in str(e).lower() or e.errno in (98, 10048):
+            print(f"\n[FEHLER] Port {run_port} wird bereits von einem anderen Programm verwendet!")
+            print("Bitte wechsle den Port in der 'warnzentrale.db' oder beende das andere Programm.")
+            os.system("pause")
+        else:
+            raise
