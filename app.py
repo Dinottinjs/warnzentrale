@@ -814,6 +814,20 @@ def manage_user(user_id):
         socketio.emit('users_update', broadcast=True)
         return jsonify({"success": True})
 
+@app.route('/api/users/me/permissions', methods=['GET'])
+@login_required
+def api_my_permissions():
+    conn = get_db()
+    u = conn.execute("SELECT roles.permissions, roles.role_name FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+    conn.close()
+    if u:
+        try:
+            perms = json.loads(u['permissions'])
+        except:
+            perms = {}
+        return jsonify({"success": True, "permissions": perms, "role_name": u['role_name']})
+    return jsonify({"success": False, "error": "Not found"}), 404
+
 @app.route('/api/users/<int:user_id>/group', methods=['PUT'])
 @permission_required('manage_users')
 def update_user_group_id(user_id):

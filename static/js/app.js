@@ -9,6 +9,51 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Function to check and enforce permissions live
+    window.checkPermissionsLive = async () => {
+        try {
+            const res = await fetch('/api/users/me/permissions');
+            if (res.ok) {
+                const data = await res.json();
+                window.CURRENT_PERMISSIONS = data.permissions;
+                const perms = data.permissions;
+                
+                // Update UI visibility based on data-req-perm
+                document.querySelectorAll('[data-req-perm]').forEach(el => {
+                    const reqPerms = el.getAttribute('data-req-perm').split(',');
+                    const hasPerm = perms.all || reqPerms.some(p => perms[p]);
+                    if (hasPerm) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                        // If this is a tab button and it's active, kick user to dashboard
+                        if (el.classList.contains('active') && el.classList.contains('tab-btn')) {
+                            document.querySelector('.tab-btn[data-tab="dashboard"]').click();
+                            showToast('Dir wurden die Berechtigungen für diesen Bereich entzogen.', 'warning');
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.error('Failed to update live permissions', e);
+        }
+    };
+
+    // Initialize UI with CURRENT_PERMISSIONS (injected in HTML)
+    const initPermissionsUI = () => {
+        const perms = window.CURRENT_PERMISSIONS || {};
+        document.querySelectorAll('[data-req-perm]').forEach(el => {
+            const reqPerms = el.getAttribute('data-req-perm').split(',');
+            const hasPerm = perms.all || reqPerms.some(p => perms[p]);
+            if (hasPerm) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+    };
+    initPermissionsUI();
+
     // Tab Navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -682,48 +727,50 @@ document.addEventListener('DOMContentLoaded', () => {
         socket = io();
 
         socket.on('permissions_updated', () => {
-        if (typeof window.loadRolesMatrix === 'function') {
-            window.loadRolesMatrix();
-        }
-    });
+            checkPermissionsLive();
+            if (typeof window.loadRolesMatrix === 'function') {
+                window.loadRolesMatrix();
+            }
+        });
 
-    socket.on('users_update', async () => {
-        if (typeof window.loadGroupsManagement === 'function') {
-            window.loadGroupsManagement();
-        }
-        
-        // Fetch current user details to update top right header
-        try {
-            const res = await fetch('/api/users');
-            if (res.ok) {
-                const users = await res.json();
-                const me = users.find(u => u.id === window.currentUserId);
-                if (me) {
-                    const nameEl = document.getElementById('header-user-name');
-                    if (nameEl && nameEl.textContent !== me.username) {
-                        nameEl.textContent = me.username;
-                    }
-                    // Fetch roles to get role name
-                    const rolesRes = await fetch('/api/db/roles');
-                    if (rolesRes.ok) {
-                        const roles = await rolesRes.json();
-                        const myRole = roles.find(r => r.id === me.role_id);
-                        if (myRole) {
-                            const roleEl = document.getElementById('header-user-role');
-                            if (roleEl && roleEl.textContent !== myRole.role_name) {
-                                roleEl.textContent = myRole.role_name;
-                                window.currentRole = myRole.role_name;
+        socket.on('users_update', async () => {
+            checkPermissionsLive();
+            if (typeof window.loadGroupsManagement === 'function') {
+                window.loadGroupsManagement();
+            }
+            
+            // Fetch current user details to update top right header
+            try {
+                const res = await fetch('/api/users');
+                if (res.ok) {
+                    const users = await res.json();
+                    const me = users.find(u => u.id === window.currentUserId);
+                    if (me) {
+                        const nameEl = document.getElementById('header-user-name');
+                        if (nameEl && nameEl.textContent !== me.username) {
+                            nameEl.textContent = me.username;
+                        }
+                        // Fetch roles to get role name
+                        const rolesRes = await fetch('/api/db/roles');
+                        if (rolesRes.ok) {
+                            const roles = await rolesRes.json();
+                            const myRole = roles.find(r => r.id === me.role_id);
+                            if (myRole) {
+                                const roleEl = document.getElementById('header-user-role');
+                                if (roleEl && roleEl.textContent !== myRole.role_name) {
+                                    roleEl.textContent = myRole.role_name;
+                                    window.currentRole = myRole.role_name;
+                                }
                             }
                         }
                     }
                 }
+            } catch(e) {
+                console.error('Failed to update current user info', e);
             }
-        } catch(e) {
-            console.error('Failed to update current user info', e);
-        }
-    });
+        });
 
-    socket.on('server_message', (data) => {
+        socket.on('server_message', (data) => {
             showToast(data.msg, data.type === 'error' ? 'error' : 'success');
         });
 
@@ -735,13 +782,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return `<span class="text-gray-500">[${l.timestamp}]</span> <span class="${color} font-bold">${l.level}</span> ${l.message}`;
                 }).join('\n');
                 viewer.scrollTop = viewer.scrollHeight;
-            }
-        });
-
-        socket.on('permissions_updated', (data) => {
-            showToast('Rechte wurden live aktualisiert!', 'success');
-            if (document.querySelector('.tab-btn[data-tab="owner"]')?.classList.contains('active')) {
-                loadPermissionsMatrix();
             }
         });
 
@@ -1522,5 +1562,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadKumpelConfig();
     loadAccountConfig();
     loadSystemConfig();
+    
+    // Initial data load for dropdowns and views
+    if (typeof loadGroupsManagement === 'function') loadGroupsManagement();
+    if (typeof loadMissions === 'function') loadMissions();
+    if (typeof loadVehicles === 'function') loadVehicles();
+    
     startPolling();
 });
