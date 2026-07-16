@@ -9,6 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateClock, 1000);
     updateClock();
 
+    window.getRoleBadge = (roleName) => {
+        if (roleName === 'Admin') {
+            return `<span class="px-3 py-1 bg-red-600/20 text-red-500 rounded font-bold shadow-[0_0_15px_rgba(239,68,68,0.6)] border border-red-500/50 animate-pulse text-sm inline-block">${roleName}</span>`;
+        } else if (roleName === 'Leitstelle' || roleName === 'Moderator') {
+            return `<span class="px-3 py-1 bg-blue-600/20 text-blue-500 rounded font-bold shadow-[0_0_10px_rgba(59,130,246,0.5)] border border-blue-500/30 text-sm inline-block">${roleName}</span>`;
+        } else if (roleName === 'Zuseher') {
+            return `<span class="px-2 py-1 bg-gray-500/20 text-gray-400 rounded font-semibold text-xs border border-gray-500/30 inline-block">${roleName}</span>`;
+        }
+        return `<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs font-semibold inline-block">${roleName || 'Unbekannt'}</span>`;
+    };
+
     // Function to check and enforce permissions live
     window.checkPermissionsLive = async () => {
         try {
@@ -856,8 +867,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             const myRole = roles.find(r => r.id === me.role_id);
                             if (myRole) {
                                 const roleEl = document.getElementById('header-user-role');
-                                if (roleEl && roleEl.textContent !== myRole.role_name) {
-                                    roleEl.textContent = myRole.role_name;
+                                if (roleEl && window.currentRole !== myRole.role_name) {
+                                    roleEl.innerHTML = window.getRoleBadge(myRole.role_name);
                                     window.currentRole = myRole.role_name;
                                 }
                             }
@@ -1620,7 +1631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td class="px-4 py-3 border-b dark:border-gray-700 font-bold">${u.first_name || ''} ${u.last_name || ''}</td>
                         <td class="px-4 py-3 border-b dark:border-gray-700">${u.username}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700"><span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">${u.role_name || 'Unbekannt'}</span></td>
+                        <td class="px-4 py-3 border-b dark:border-gray-700">${window.getRoleBadge(u.role_name)}</td>
                         <td class="px-4 py-3 border-b dark:border-gray-700">${u.group_name || '-'}</td>
                         <td class="px-4 py-3 border-b dark:border-gray-700 text-xs text-gray-500">${dateStr}</td>
                         <td class="px-4 py-3 border-b dark:border-gray-700 text-right space-x-2">

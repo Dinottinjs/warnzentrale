@@ -83,7 +83,7 @@ def schedule_restart():
         import time, subprocess, sys, os
         time.sleep(1.5)
         # Start new instance and exit this one to free the port
-        subprocess.Popen([sys.executable, 'app.py'], close_fds=True)
+        subprocess.Popen([sys.executable, 'app.py', '--restarted'], close_fds=True)
         os._exit(0)
     import threading
     threading.Thread(target=restart_task).start()
@@ -831,6 +831,7 @@ def api_missions():
         conn.commit()
         mission_id = c.lastrowid
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat den Einsatz '{data['title']}' erstellt.")
         socketio.emit('missions_update')
         return jsonify({"success": True, "mission_id": mission_id})
 
@@ -844,6 +845,7 @@ def api_mission_detail(mission_id):
         conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat den Einsatz (ID: {mission_id}) gelöscht.")
         socketio.emit('missions_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
@@ -852,6 +854,7 @@ def api_mission_detail(mission_id):
                      (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat den Einsatz '{data.get('title', mission_id)}' aktualisiert.")
         socketio.emit('missions_update')
         return jsonify({"success": True})
 
@@ -869,6 +872,7 @@ def api_vehicles():
                      (data['name'], data.get('type',''), data.get('equipment_list',''), '{}', data.get('status','available')))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat das Fahrzeug/Gerät '{data['name']}' erstellt.")
         socketio.emit('vehicles_update')
         return jsonify({"success": True})
 
@@ -880,6 +884,7 @@ def api_vehicle_detail(vehicle_id):
         conn.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat das Fahrzeug/Gerät (ID: {vehicle_id}) gelöscht.")
         socketio.emit('vehicles_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
@@ -888,6 +893,7 @@ def api_vehicle_detail(vehicle_id):
                      (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
         conn.commit()
         conn.close()
+        logger.info(f"Benutzer '{session.get('username')}' hat das Fahrzeug/Gerät (ID: {vehicle_id}) aktualisiert.")
         socketio.emit('vehicles_update')
         return jsonify({"success": True})
 
@@ -1216,6 +1222,9 @@ def get_free_port(starting_port):
                 port += 1
 
 if __name__ == '__main__':
+    if '--restarted' in sys.argv:
+        time.sleep(2)  # Wait for old process to fully release the port
+        
     # Fetch port from db
     conn = get_db()
     port_row = conn.execute("SELECT value FROM settings WHERE key = 'port'").fetchone()
