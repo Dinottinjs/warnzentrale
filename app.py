@@ -642,12 +642,21 @@ def update_user_group(user_id):
     try:
         conn.execute("UPDATE users SET group_id = ? WHERE id = ?", (data.get('group_id'), user_id))
         conn.commit()
-        socketio.emit()
+        socketio.emit('users_update')
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
     finally:
         conn.close()
+
+# Public endpoint: all logged-in users can fetch group list (for mission dropdown)
+@app.route('/api/groups', methods=['GET'])
+@login_required
+def api_get_groups():
+    conn = get_db()
+    rows = conn.execute("SELECT id, group_name, description, color FROM groups ORDER BY group_name ASC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 
 # --- Missions & Vehicles API ---
 @app.route('/api/missions', methods=['GET', 'POST'])
@@ -665,7 +674,7 @@ def api_missions():
         conn.commit()
         mission_id = c.lastrowid
         conn.close()
-        socketio.emit()
+        socketio.emit('missions_update')
         return jsonify({"success": True, "mission_id": mission_id})
 
 @app.route('/api/missions/<int:mission_id>', methods=['PUT', 'DELETE'])
@@ -678,7 +687,7 @@ def api_mission_detail(mission_id):
         conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('missions_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -686,7 +695,7 @@ def api_mission_detail(mission_id):
                      (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('missions_update')
         return jsonify({"success": True})
 
 @app.route('/api/vehicles', methods=['GET', 'POST'])
@@ -703,7 +712,7 @@ def api_vehicles():
                      (data['name'], data.get('type',''), data.get('equipment_list',''), '{}', data.get('status','available')))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('vehicles_update')
         return jsonify({"success": True})
 
 @app.route('/api/vehicles/<int:vehicle_id>', methods=['PUT', 'DELETE'])
@@ -714,7 +723,7 @@ def api_vehicle_detail(vehicle_id):
         conn.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('vehicles_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
@@ -722,7 +731,7 @@ def api_vehicle_detail(vehicle_id):
                      (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('vehicles_update')
         return jsonify({"success": True})
 
 @app.route('/api/missions/<int:mission_id>/logs', methods=['GET', 'POST'])
@@ -739,7 +748,7 @@ def api_mission_logs(mission_id):
                      (mission_id, data['log_text'], session['user_id']))
         conn.commit()
         conn.close()
-        socketio.emit()
+        socketio.emit('mission_logs_update', {'mission_id': mission_id})
         return jsonify({"success": True})
 @app.route('/api/users', methods=['GET', 'POST'])
 @login_required

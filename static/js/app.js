@@ -1095,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `).join('');
             
             // Populate group select in new mission modal
-            const gRes = await fetch('/api/db/groups');
+            const gRes = await fetch('/api/groups');
             const groups = await gRes.json();
             const gSelect = document.getElementById('new-mission-group');
             if(gSelect) {
@@ -1443,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.loadGroupsManagement = async () => {
         try {
-            const res = await fetch('/api/db/groups');
+            const res = await fetch('/api/groups');
             const groups = await res.json();
             
             const resUsers = await fetch('/api/users');
