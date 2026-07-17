@@ -85,8 +85,8 @@ echo %YELLOW%Standard-Zugangsdaten (bitte nach Login aendern!):%NC%
 echo %YELLOW%Benutzername:%NC% admin
 echo %YELLOW%Passwort:%NC% 122
 echo %GREEN%==================================================%NC%
-start "" "http://127.0.0.1:5000"
-start "" "!PROJECT_DIR!\.venv\Scripts\python.exe" "app.py"
+start http://127.0.0.1:5000
+"!PROJECT_DIR!\.venv\Scripts\python.exe" "app.py"
 pause
 exit /b 0
 
