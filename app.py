@@ -236,9 +236,20 @@ def init_db():
         color_code TEXT,
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        assigned_vehicles TEXT,
+        assigned_groups TEXT,
         FOREIGN KEY(group_id) REFERENCES groups(id),
         FOREIGN KEY(created_by) REFERENCES users(id)
     )''')
+    
+    try:
+        c.execute("ALTER TABLE missions ADD COLUMN assigned_vehicles TEXT")
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE missions ADD COLUMN assigned_groups TEXT")
+    except Exception:
+        pass
 
     # Vehicles / Equipment
     c.execute('''CREATE TABLE IF NOT EXISTS vehicles (
@@ -917,10 +928,22 @@ def api_mission_detail(mission_id):
     elif request.method == 'PUT':
         data = request.json
         status = data.get('status', 'active')
+        
+        old_mission = conn.execute("SELECT status FROM missions WHERE id = ?", (mission_id,)).fetchone()
+        
         conn.execute("UPDATE missions SET title = ?, description = ?, address = ?, lat = ?, lng = ?, status = ?, color_code = ? WHERE id = ?", 
                      (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), status, data.get('color_code', '#e11d48'), mission_id))
         
-        if status == 'completed':
+        if status == 'completed' and old_mission and old_mission['status'] != 'completed':
+            vehicles = conn.execute("SELECT id, name, type FROM vehicles WHERE current_mission_id = ?", (mission_id,)).fetchall()
+            groups = conn.execute("SELECT id, name FROM groups WHERE current_mission_id = ?", (mission_id,)).fetchall()
+            
+            import json
+            assigned_vehicles = json.dumps([dict(v) for v in vehicles])
+            assigned_groups = json.dumps([dict(g) for g in groups])
+            
+            conn.execute("UPDATE missions SET assigned_vehicles = ?, assigned_groups = ? WHERE id = ?", (assigned_vehicles, assigned_groups, mission_id))
+            
             conn.execute("UPDATE vehicles SET current_mission_id = NULL, status = 'available' WHERE current_mission_id = ?", (mission_id,))
             conn.execute("UPDATE groups SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
             socketio.emit('vehicles_update')

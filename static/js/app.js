@@ -1466,7 +1466,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update the list of vehicles currently assigned to this mission
                 const assignedList = document.getElementById('mission-vehicles-list');
                 if(assignedList) {
-                    const assignedVehicles = vehicles.filter(v => v.current_mission_id === window.currentOpenMissionId);
+                    let assignedVehicles = [];
+                    if (window.currentMissionStatus === 'completed' && window.currentMissionData && window.currentMissionData.assigned_vehicles) {
+                        try { assignedVehicles = JSON.parse(window.currentMissionData.assigned_vehicles); } catch(e){}
+                    } else {
+                        assignedVehicles = vehicles.filter(v => v.current_mission_id === window.currentOpenMissionId);
+                    }
+                    
                     if(assignedVehicles.length === 0) {
                         assignedList.innerHTML = '<div class="text-xs text-gray-500">Keine Fahrzeuge zugewiesen.</div>';
                     } else {
@@ -1522,7 +1528,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const assignedList = document.getElementById('mission-groups-list');
                 if(assignedList) {
-                    const assignedGroups = groups.filter(g => g.current_mission_id === window.currentOpenMissionId);
+                    let assignedGroups = [];
+                    if (window.currentMissionStatus === 'completed' && window.currentMissionData && window.currentMissionData.assigned_groups) {
+                        try { assignedGroups = JSON.parse(window.currentMissionData.assigned_groups); } catch(e){}
+                    } else {
+                        assignedGroups = groups.filter(g => g.current_mission_id === window.currentOpenMissionId);
+                    }
+                    
                     if(assignedGroups.length === 0) {
                         assignedList.innerHTML = '<div class="text-xs text-gray-500">Keine Gruppen zugewiesen.</div>';
                     } else {
@@ -1573,6 +1585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(mission) {
                 window.currentMissionStatus = mission.status;
+                window.currentMissionData = mission;
                 document.getElementById('mission-detail-title').textContent = `Einsatz: ${mission.title}`;
                 document.getElementById('mission-detail-desc').textContent = mission.description || 'Keine Beschreibung vorhanden.';
                 
