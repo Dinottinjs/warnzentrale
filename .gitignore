@@ -7,3 +7,4 @@ data/
 test_db.py
 static/uploads/*
 !static/uploads/default.png
+.secret_key

@@ -126,7 +126,19 @@ def schedule_restart():
     threading.Thread(target=restart_task).start()
 
 app = Flask(__name__)
-app.secret_key = 'super_secret_dashboard_key_v3'
+# Generate or load a unique secret key for this installation
+secret_file = '.secret_key'
+if os.path.exists(secret_file):
+    with open(secret_file, 'r') as f:
+        app.secret_key = f.read().strip()
+else:
+    app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+    try:
+        with open(secret_file, 'w') as f:
+            f.write(app.secret_key)
+    except Exception:
+        pass
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 if os.path.exists('/.dockerenv'):
