@@ -13,6 +13,7 @@ clear
 echo -e "${YELLOW}==================================================${NC}"
 echo -e "${YELLOW}    FEUERWEHR-WARNZENTRALE - LINUX INSTALLER      ${NC}"
 echo -e "${YELLOW}==================================================${NC}"
+echo -e "${CYAN} (c) 2026 Maximilian Holzer - Lizenziert unter MIT${NC}"
 echo ""
 
 cd "$(dirname "$0")"
