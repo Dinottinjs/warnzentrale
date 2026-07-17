@@ -101,7 +101,7 @@
                     <i class="fa-solid fa-triangle-exclamation text-2xl mr-3"></i>
                     <div>
                         <p class="font-bold">Sicherheitswarnung!</p>
-                        <p class="text-sm">Dein Account verwendet noch das Standardpasswort. Bitte ändere es umgehend in den <a href="#" onclick="document.querySelector('.tab-btn[data-tab=\'account\']').click();" class="underline font-bold">Einstellungen</a>.{% if not has_station %} Vergiss auch nicht, die Feuerwache (Standort) in den <a href="#" onclick="document.querySelector('.tab-btn[data-tab=\'settings\']').click();" class="underline font-bold">Karten-Einstellungen</a> einzutragen!{% endif %}</p>
+                        <p class="text-sm">Dein Account verwendet noch das Standardpasswort. Bitte ändere es umgehend in den <a href="#" onclick="document.querySelector('.tab-btn[data-tab=\'account\']').click();" class="underline font-bold">Einstellungen</a>.</p>
                     </div>
                 </div>
             </div>
@@ -113,7 +113,7 @@
                     <i class="fa-solid fa-map-location-dot text-2xl mr-3"></i>
                     <div>
                         <p class="font-bold">Feuerwache nicht konfiguriert!</p>
-                        <p class="text-sm">Es ist noch keine Feuerwache auf der Karte eingetragen. Bitte trage sie in den <a href="#" onclick="document.querySelector('.tab-btn[data-tab=\'settings\']').click();" class="underline font-bold">Karten-Einstellungen</a> ein, damit die Routenberechnung funktioniert.</p>
+                        <p class="text-sm">Es ist noch keine Feuerwache auf der Karte eingetragen. Bitte trage sie in den <a href="#" onclick="document.querySelector('.tab-btn[data-tab=\'settings\']').click(); setTimeout(() => { const b = document.getElementById('acc-btn-map'); if(b){ b.scrollIntoView({behavior: 'smooth', block: 'center'}); if(document.getElementById('acc-section-map').classList.contains('hidden')) b.click(); } }, 150);" class="underline font-bold text-orange-800 dark:text-orange-300">Karten-Einstellungen</a> ein, damit die Routenberechnung funktioniert.</p>
                     </div>
                 </div>
             </div>
@@ -579,7 +579,7 @@
                 <!-- Map Section -->
                 {% if user_perms.get('manage_settings', False) or current_role == 'Admin' %}
                 <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
-                    <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-map').classList.toggle('hidden')">
+                    <button id="acc-btn-map" class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-map').classList.toggle('hidden')">
                         <span>📍 Karten-Einstellungen</span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </button>

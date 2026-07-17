@@ -1012,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     const tokenLink = window.location.origin + '/invite/' + token;
                     // Show it inline on the button
-                    btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-copy ml-1"></i>`;
+                    btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-copy ml-2" title="Kopieren"></i> <i class="fa-solid fa-eye-slash ml-3 text-gray-300 hover:text-white" title="Verstecken" onclick="event.stopPropagation(); this.parentElement.dataset.showing='false'; this.parentElement.innerHTML='<i class=\\'fa-solid fa-key\\'></i>'; this.parentElement.classList.replace('bg-gray-500', 'bg-blue-600'); this.parentElement.classList.replace('hover:bg-gray-600', 'hover:bg-blue-700');"></i>`;
                     btn.dataset.showing = 'true';
                     btn.classList.replace('bg-blue-600', 'bg-gray-500');
                     btn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-600');
@@ -1250,6 +1250,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if(res.ok) {
                     showToast('Karten-Einstellungen gespeichert.', 'success');
+                    const warning = document.getElementById('station-warning');
+                    if (warning && lat && lng) warning.style.display = 'none';
                     if(map) {
                         // Reload map markers to show station
                         if(typeof loadMissions === 'function') loadMissions();
