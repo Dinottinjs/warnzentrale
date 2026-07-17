@@ -1393,11 +1393,30 @@ if __name__ == '__main__':
     # Start the system stats thread
     socketio.start_background_task(sys_stats_thread)
     
-    print("\n" + "="*50)
-    print(f" WARNZENTRALE LOKAL ERREICHBAR UNTER:")
-    print(f" -> http://127.0.0.1:{run_port}")
-    print("="*50 + "\n")
-    print("="*50 + "\n")
+    # Determine local IP address for display
+    import socket as _socket
+    try:
+        _s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        _s.connect(("8.8.8.8", 80))
+        local_ip = _s.getsockname()[0]
+        _s.close()
+    except Exception:
+        local_ip = "127.0.0.1"
+    
+    try:
+        mdns_name = _socket.gethostname()
+    except Exception:
+        mdns_name = "warnzentrale"
+
+    print("\n" + "="*54)
+    print("  FEUERWEHR-WARNZENTRALE - GESTARTET")
+    print("="*54)
+    print(f"  Lokal:      http://127.0.0.1:{run_port}")
+    print(f"  Netzwerk:   http://{local_ip}:{run_port}")
+    print(f"  mDNS:       http://{mdns_name}.local:{run_port}")
+    print("="*54)
+    print("  Standard-Login: admin / 122")
+    print("="*54 + "\n")
 
     # Use socketio.run instead of app.run
     socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)

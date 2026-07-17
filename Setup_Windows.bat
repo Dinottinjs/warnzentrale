@@ -73,18 +73,27 @@ echo Set WshShell = CreateObject("WScript.Shell") > "!VBS_PATH!"
 echo WshShell.CurrentDirectory = "!PROJECT_DIR!" >> "!VBS_PATH!"
 echo WshShell.Run """!PROJECT_DIR!\.venv\Scripts\python.exe"" ""!PROJECT_DIR!\app.py""", 0, False >> "!VBS_PATH!"
 
+for /f "tokens=2 delims=:" %%I in ('ipconfig ^| findstr /i "IPv4"') do (
+    set "LOCAL_IP=%%I"
+    goto :found_ip
+)
+:found_ip
+set "LOCAL_IP=%LOCAL_IP: =%"
+
 echo.
 echo %GREEN%===================================================%NC%
-echo %GREEN%[ERFOLG] Installation abgeschlossen!%NC%
-echo Die Warnzentrale startet beim naechsten Boot automatisch.
-echo Starte Dashboard jetzt...
+echo %GREEN%  [ERFOLG] Installation abgeschlossen!%NC%
+echo %GREEN%===================================================%NC%
 echo.
-echo Lokaler Zugriff: %BLUE%http://127.0.0.1:5000%NC%
+echo   Erreichbar im Netzwerk:
+echo     %BLUE%http://127.0.0.1:5000%NC%             (Lokal)
+echo     %BLUE%http://!LOCAL_IP!:5000%NC%    (Netzwerk-IP)
+echo     %BLUE%http://%COMPUTERNAME%.local:5000%NC%   (mDNS)
 echo.
-echo %YELLOW%Standard-Zugangsdaten (bitte nach Login aendern!):%NC%
-echo %YELLOW%Benutzername:%NC% admin
-echo %YELLOW%Passwort:%NC% 122
-echo %GREEN%==================================================%NC%
+echo %YELLOW%  Standard-Zugangsdaten (bitte nach Login aendern!):%NC%
+echo %YELLOW%  Benutzername:%NC% admin
+echo %YELLOW%  Passwort:%NC%     122
+echo %GREEN%===================================================%NC%
 start http://127.0.0.1:5000
 "!PROJECT_DIR!\.venv\Scripts\python.exe" "app.py"
 pause

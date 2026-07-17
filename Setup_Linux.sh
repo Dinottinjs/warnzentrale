@@ -12,9 +12,11 @@ echo -e "${YELLOW}==================================================${NC}"
 echo ""
 
 cd "$(dirname "$0")"
+PROJECT_DIR=$(pwd)
 
 if [ "$EUID" -ne 0 ]; then
-  echo -e "${RED}[FEHLER] Bitte fuehre das Skript mit Root-Rechten aus (sudo ./Setup_Linux.sh).${NC}"
+  echo -e "${RED}[FEHLER] Bitte fuehre das Skript mit Root-Rechten aus:${NC}"
+  echo -e "  ${CYAN}sudo ./Setup_Linux.sh${NC}"
   exit 1
 fi
 
@@ -40,53 +42,104 @@ print_progress() {
     echo ""
 }
 
-print_progress 10 "Ueberpruefe Python-Installation..."
-if ! command -v python3 &> /dev/null; then
-    echo -e "${CYAN}Installiere Python3...${NC}"
-    apt-get update && apt-get install -y python3 python3-pip python3-venv sqlite3 > /dev/null 2>&1
-fi
+# 1. System-Pakete installieren
+print_progress 10 "Installiere System-Abhaengigkeiten..."
+apt-get update -qq > /dev/null 2>&1
+apt-get install -y python3 python3-pip python3-venv sqlite3 avahi-daemon avahi-utils > /dev/null 2>&1
 
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}[FEHLER] Python3 konnte nicht installiert werden.${NC}"
     exit 1
 fi
 
+# 2. Virtual Environment
 print_progress 30 "Erstelle virtuelle Umgebung (.venv)..."
 python3 -m venv .venv
 if [ $? -ne 0 ]; then
     apt-get install -y python3-venv > /dev/null 2>&1
     python3 -m venv .venv
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[FEHLER] Virtuelle Umgebung konnte nicht erstellt werden.${NC}"
+        exit 1
+    fi
 fi
 
-print_progress 60 "Installiere Abhaengigkeiten..."
+# 3. Abhaengigkeiten installieren
+print_progress 60 "Installiere Python-Abhaengigkeiten..."
 source .venv/bin/activate
 python3 -m pip install --upgrade pip --disable-pip-version-check -q > /dev/null 2>&1
 pip install -r requirements.txt --disable-pip-version-check -q > /dev/null 2>&1
-
-print_progress 85 "Initialisiere SQLite Datenbank..."
-python3 -c "import app; app.init_db()" > /dev/null 2>&1
-if [ -n "$SUDO_USER" ]; then
-    chown -R "$SUDO_USER:$SUDO_USER" .
+if [ $? -ne 0 ]; then
+    echo -e "${RED}[FEHLER] Python-Pakete konnten nicht installiert werden.${NC}"
+    exit 1
 fi
 
+# 4. Datenbank initialisieren
+print_progress 75 "Initialisiere SQLite Datenbank..."
+python3 -c "import app; app.init_db()" > /dev/null 2>&1
+
+# Berechtigungen setzen
+USER_NAME=${SUDO_USER:-root}
+if [ -n "$SUDO_USER" ]; then
+    chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_DIR"
+fi
+
+# 5. Firewall oeffnen
+print_progress 80 "Konfiguriere Firewall..."
+if command -v ufw &> /dev/null; then
+    ufw allow 5000/tcp > /dev/null 2>&1
+    ufw --force enable > /dev/null 2>&1
+fi
+if command -v firewall-cmd &> /dev/null; then
+    firewall-cmd --permanent --add-port=5000/tcp > /dev/null 2>&1
+    firewall-cmd --reload > /dev/null 2>&1
+fi
+
+# 6. mDNS / Avahi konfigurieren (erreichbar unter warnzentrale.local)
+print_progress 85 "Konfiguriere mDNS (warnzentrale.local)..."
+AVAHI_CONF="/etc/avahi/services/warnzentrale.service"
+cat > "$AVAHI_CONF" << 'AVAHIEOF'
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name>Feuerwehr Warnzentrale</name>
+  <service>
+    <type>_http._tcp</type>
+    <port>5000</port>
+  </service>
+</service-group>
+AVAHIEOF
+
+# Avahi Hostnamen setzen
+AVAHI_DAEMON_CONF="/etc/avahi/avahi-daemon.conf"
+if [ -f "$AVAHI_DAEMON_CONF" ]; then
+    sed -i 's/^#*host-name=.*/host-name=warnzentrale/' "$AVAHI_DAEMON_CONF" 2>/dev/null || true
+fi
+
+systemctl enable avahi-daemon > /dev/null 2>&1
+systemctl restart avahi-daemon > /dev/null 2>&1
+
+# 7. Systemd Service einrichten
 print_progress 95 "Richte systemd Service ein..."
 SERVICE_NAME="warnzentrale"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
-PROJECT_DIR=$(pwd)
-USER_NAME=${SUDO_USER:-root}
 
 cat > "$SERVICE_PATH" << SERVICEEOF
 [Unit]
 Description=Feuerwehr Warnzentrale Dashboard
-After=network.target
+After=network.target network-online.target
+Wants=network-online.target
 
 [Service]
+Type=simple
 User=$USER_NAME
 WorkingDirectory=$PROJECT_DIR
-Environment="PATH=$PROJECT_DIR/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment=PATH=$PROJECT_DIR/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=$PROJECT_DIR/.venv/bin/python $PROJECT_DIR/app.py
 Restart=always
 RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -94,18 +147,46 @@ SERVICEEOF
 
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" > /dev/null 2>&1
+systemctl stop "$SERVICE_NAME" > /dev/null 2>&1
+sleep 1
 systemctl start "$SERVICE_NAME"
+
+# Warten und pruefen ob Service laeuft
+sleep 3
+if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo ""
+    echo -e "${RED}[WARNUNG] Service konnte nicht automatisch gestartet werden.${NC}"
+    echo -e "Fehlerdetails:"
+    systemctl status "$SERVICE_NAME" --no-pager -l
+    echo ""
+    echo -e "${CYAN}Versuche manuellen Start...${NC}"
+    cd "$PROJECT_DIR"
+    source .venv/bin/activate
+    nohup python3 app.py > /tmp/warnzentrale.log 2>&1 &
+    sleep 2
+fi
 
 print_progress 100 "Installation abgeschlossen!"
 
 IP=$(hostname -I | awk '{print $1}')
+HOSTNAME=$(hostname)
+
 echo ""
 echo -e "${GREEN}==================================================${NC}"
-echo -e "${GREEN}[ERFOLG] Installation abgeschlossen!${NC}"
-echo -e "Warnzentrale erreichbar unter: ${BLUE}http://$IP:5000${NC}"
-echo -e "Service Status: sudo systemctl status warnzentrale"
+echo -e "${GREEN}  [ERFOLG] Installation abgeschlossen!${NC}"
+echo -e "${GREEN}==================================================${NC}"
 echo ""
-echo -e "${YELLOW}Standard-Zugangsdaten (bitte nach Login aendern!):${NC}"
-echo -e "${YELLOW}Benutzername:${NC} admin"
-echo -e "${YELLOW}Passwort:${NC} 122"
+echo -e "  Erreichbar im Netzwerk:"
+echo -e "    ${BLUE}http://$IP:5000${NC}             (IP-Adresse)"
+echo -e "    ${BLUE}http://warnzentrale.local:5000${NC}  (mDNS - selbes Netzwerk)"
+echo ""
+echo -e "  Service verwalten:"
+echo -e "    ${CYAN}sudo systemctl status warnzentrale${NC}"
+echo -e "    ${CYAN}sudo systemctl restart warnzentrale${NC}"
+echo -e "    ${CYAN}sudo journalctl -u warnzentrale -f${NC}  (Live-Logs)"
+echo ""
+echo -e "${YELLOW}  Standard-Zugangsdaten (bitte nach Login aendern!):${NC}"
+echo -e "    ${YELLOW}Benutzername:${NC} admin"
+echo -e "    ${YELLOW}Passwort:${NC}     122"
+echo ""
 echo -e "${GREEN}==================================================${NC}"
