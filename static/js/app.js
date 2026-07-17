@@ -1540,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         assignedList.innerHTML = assignedGroups.map(g => `
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 mb-2 flex justify-between items-center">
-                                <span class="text-md font-bold"><i class="fa-solid fa-users text-blue-500 mr-2"></i>${g.group_name}</span>
+                                <span class="text-md font-bold"><i class="fa-solid fa-users text-blue-500 mr-2"></i>${g.name || g.group_name}</span>
                                 ${window.currentMissionStatus !== 'completed' ? `<button onclick="unassignGroup(${g.id})" class="text-xs bg-red-600 hover:bg-red-500 transition-colors text-white px-3 py-1.5 rounded-lg shadow">Abziehen</button>` : ''}
                             </div>
                         `).join('');
