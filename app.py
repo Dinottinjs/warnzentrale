@@ -69,7 +69,11 @@ def sys_stats_thread():
         socketio.sleep(3)
 
 # --- Logging Setup ---
-log_file = 'warnzentrale.log'
+import os
+if os.path.exists('/.dockerenv'):
+    log_file = os.path.join('data', 'warnzentrale.log')
+else:
+    log_file = 'warnzentrale.log'
 logging.basicConfig(level=logging.INFO,
                     format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}',
                     handlers=[
@@ -83,7 +87,10 @@ def schedule_restart():
         import time, subprocess, sys, os
         time.sleep(1.5)
         # Start new instance and exit this one to free the port
-        subprocess.Popen([sys.executable, 'app.py', '--restarted'], close_fds=True)
+        kwargs = {}
+        if os.name == 'nt':
+            kwargs['creationflags'] = subprocess.CREATE_NEW_CONSOLE
+        subprocess.Popen([sys.executable, 'app.py', '--restarted'], close_fds=True, **kwargs)
         os._exit(0)
     import threading
     threading.Thread(target=restart_task).start()
@@ -92,7 +99,11 @@ app = Flask(__name__)
 app.secret_key = 'super_secret_dashboard_key_v3'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-DB_FILE = 'warnzentrale.db'
+if os.path.exists('/.dockerenv'):
+    DB_FILE = os.path.join('data', 'warnzentrale.db')
+else:
+    DB_FILE = 'warnzentrale.db'
+
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -661,6 +672,10 @@ def download_logs():
 def check_and_update():
     import subprocess
     import sys
+    
+    if os.path.exists('/.dockerenv'):
+        return jsonify({"error": "Updates sind in der Docker-Version deaktiviert. Bitte laden Sie das neueste Docker-Image (docker pull) herunter."}), 403
+        
     try:
         # Ensure it's a git repository and handle dubious ownership
         subprocess.run(["git", "init"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

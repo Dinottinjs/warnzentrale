@@ -767,7 +767,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-member-firstname').value = user.first_name || '';
         document.getElementById('edit-member-lastname').value = user.last_name || '';
         document.getElementById('edit-member-username').value = user.username || '';
-        document.getElementById('edit-member-group').value = user.group_id || '';
+        const groupSelect = document.getElementById('edit-member-group');
+        groupSelect.value = user.group_id || '';
+        groupSelect.disabled = false;
+        groupSelect.title = "";
         
         try {
             const rolesRes = await fetch('/api/db/roles');
@@ -1863,11 +1866,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.removeUserFromGroup = async (userId) => {
-        if (confirm('Benutzer aus dieser Gruppe entfernen? (Wird der Standardgruppe 1 zugewiesen)')) {
+        if (confirm('Benutzer aus dieser Gruppe entfernen? (Wird keiner Gruppe mehr zugewiesen)')) {
             await fetch(`/api/users/${userId}/group`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({group_id: 1})
+                body: JSON.stringify({group_id: null})
             });
             loadGroupsManagement();
         }
