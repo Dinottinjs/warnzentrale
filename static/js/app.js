@@ -816,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(data.success) {
                     createUserForm.reset();
                     document.getElementById('new-member-username').textContent = data.username;
-                    const tokenLink = window.location.origin + '/invite/' + data.token;
+                    const tokenLink = data.token_link || (window.location.origin + '/invite/' + data.token);
                     document.getElementById('new-member-token').value = tokenLink;
                     document.getElementById('new-member-modal').classList.remove('hidden');
                 } else {
@@ -882,7 +882,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(res.ok) {
                 const out = await res.json();
                 const resDiv = document.getElementById('invite-result');
-                resDiv.textContent = `Token: ${out.token}`;
+                resDiv.textContent = `Link: ${out.token_link || out.token}`;
                 resDiv.classList.remove('hidden');
             }
         });
@@ -982,15 +982,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        window.revealToken = async (btn, token) => {
-            if (!token) {
+        window.revealToken = async (btn, tokenLink) => {
+            if (!tokenLink) {
                 showToast('Kein Token vorhanden', 'info');
                 return;
             }
             
             // If already showing token, copy it
             if (btn.dataset.showing === 'true') {
-                const tokenLink = window.location.origin + '/invite/' + token;
                 navigator.clipboard.writeText(tokenLink).then(() => {
                     showToast('Einladungs-Link kopiert!', 'success');
                 }).catch(() => {
@@ -1010,7 +1009,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    const tokenLink = window.location.origin + '/invite/' + token;
                     // Show it inline on the button
                     btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-copy ml-2" title="Kopieren"></i> <i class="fa-solid fa-eye-slash ml-3 text-gray-300 hover:text-white" title="Verstecken" onclick="event.stopPropagation(); this.parentElement.dataset.showing='false'; this.parentElement.innerHTML='<i class=\\'fa-solid fa-key\\'></i>'; this.parentElement.classList.replace('bg-gray-500', 'bg-blue-600'); this.parentElement.classList.replace('hover:bg-gray-600', 'hover:bg-blue-700');"></i>`;
                     btn.dataset.showing = 'true';
@@ -1131,11 +1129,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/db/settings');
             const data = await res.json();
             
-            let port = 5000, domain = '', mode = 'lan', ssid = '';
+            let port = 5000, mode = 'lan', ssid = '';
             let stationLat = '', stationLng = '';
             data.forEach(item => {
                 if(item.key === 'port') port = item.value;
-                if(item.key === 'local_domain') domain = item.value;
                 if(item.key === 'network_mode') mode = item.value;
                 if(item.key === 'wifi_ssid') ssid = item.value;
                 if(item.key === 'station_lat') stationLat = item.value;
@@ -1143,11 +1140,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             const sysPort = document.getElementById('sys-port');
-            const sysDomain = document.getElementById('sys-domain');
             const sysStationLat = document.getElementById('sys-station-lat');
             const sysStationLng = document.getElementById('sys-station-lng');
             if(sysPort) sysPort.value = port;
-            if(sysDomain) sysDomain.value = domain;
             if(sysStationLat) sysStationLat.value = stationLat;
             if(sysStationLng) sysStationLng.value = stationLng;
             
@@ -1187,7 +1182,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const mode = document.querySelector('input[name="network_mode"]:checked').value;
             const data = {
                 port: document.getElementById('sys-port').value,
-                local_domain: document.getElementById('sys-domain').value,
                 network_mode: mode
             };
             try {
@@ -1870,7 +1864,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-2 py-3 border-b dark:border-gray-700">${u.group_name || '-'}</td>
                         <td class="px-2 py-3 border-b dark:border-gray-700">${window.getRoleBadge(u.role_name)}</td>
                         <td class="px-2 py-3 border-b dark:border-gray-700 text-right space-x-1">
-                            ${window.currentRole === 'Admin' ? `<button onclick="revealToken(this, '${u.invite_token || ''}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors" title="Token anzeigen"><i class="fa-solid fa-key"></i></button>` : ''}
+                            ${window.currentRole === 'Admin' ? `<button onclick="revealToken(this, '${u.token_link || ''}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors" title="Token anzeigen"><i class="fa-solid fa-key"></i></button>` : ''}
                             <button onclick="openEditMemberModal(${u.id})" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-xs rounded transition-colors" title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="deleteUser(${u.id})" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors" title="Löschen"><i class="fa-solid fa-trash"></i></button>
                         </td>

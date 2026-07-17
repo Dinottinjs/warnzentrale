@@ -155,29 +155,7 @@ else
     sleep 3
 fi
 
-# 7. Avahi/mDNS
-print_progress 80 "Installiere mDNS (avahi-daemon)..."
-install_pkg avahi-daemon
 
-mkdir -p /etc/avahi/services
-cat > "/etc/avahi/services/warnzentrale.service" << 'AVAHIEOF'
-<?xml version="1.0" standalone='no'?>
-<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
-<service-group>
-  <name>Feuerwehr Warnzentrale</name>
-  <service>
-    <type>_http._tcp</type>
-    <port>80</port>
-  </service>
-</service-group>
-AVAHIEOF
-
-hostnamectl set-hostname warnzentrale > /dev/null 2>&1 || true
-if [ -f "/etc/avahi/avahi-daemon.conf" ]; then
-    sed -i 's/^#*host-name=.*/host-name=warnzentrale/' /etc/avahi/avahi-daemon.conf 2>/dev/null || true
-fi
-systemctl enable avahi-daemon > /dev/null 2>&1 || true
-systemctl restart avahi-daemon > /dev/null 2>&1 || true
 
 # 8. Firewall
 print_progress 85 "Konfiguriere Firewall..."
@@ -249,11 +227,9 @@ echo -e "${GREEN}==================================================${NC}"
 echo ""
 echo -e "  Erreichbar im Netzwerk:"
 if [ "$NGINX_INSTALLED" = true ]; then
-    echo -e "    ${BLUE}http://$IP:5000${NC}             (IP-Adresse, Lokal)"
-    echo -e "    ${BLUE}http://warnzentrale.local${NC}   (mDNS - kein Port noetig)"
+    echo -e "    ${BLUE}http://$IP${NC}                (IP-Adresse - kein Port noetig)"
 else
     echo -e "    ${BLUE}http://$IP:5000${NC}             (IP-Adresse)"
-    echo -e "    ${BLUE}http://warnzentrale.local:5000${NC} (mDNS - Port erforderlich da 80 belegt)"
 fi
 echo ""
 echo -e "  Service verwalten:"

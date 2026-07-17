@@ -28,6 +28,17 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"
 
+def get_base_url(req):
+    host = req.host
+    if host.startswith('127.0.0.1') or host.startswith('localhost'):
+        local_ip = get_local_ip()
+        if ':' in host:
+            port = host.split(':')[1]
+            host = f"{local_ip}:{port}"
+        else:
+            host = local_ip
+    return f"{req.scheme}://{host}"
+
 def check_ping():
     try:
         start = time.time()
@@ -345,7 +356,6 @@ def init_db():
         c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_port', '8122')")
         c.execute("INSERT INTO settings (key, value) VALUES ('kumpel_password', '122')")
         c.execute("INSERT INTO settings (key, value) VALUES ('port', '5000')")
-        c.execute("INSERT INTO settings (key, value) VALUES ('local_domain', '')")
         c.execute("INSERT INTO settings (key, value) VALUES ('network_mode', 'lan')")
         c.execute("INSERT INTO settings (key, value) VALUES ('wifi_ssid', '')")
         
@@ -1053,7 +1063,12 @@ def api_users():
     if request.method == 'GET':
         users = conn.execute("SELECT u.id, u.username, u.first_name, u.last_name, u.group_id, u.role_id, u.created_at, u.invite_token, g.group_name, r.role_name FROM users u LEFT JOIN groups g ON u.group_id = g.id LEFT JOIN roles r ON u.role_id = r.id").fetchall()
         conn.close()
-        return jsonify([dict(u) for u in users])
+        user_list = [dict(u) for u in users]
+        base_url = get_base_url(request)
+        for u in user_list:
+            if u.get('invite_token'):
+                u['token_link'] = f"{base_url}/invite/{u['invite_token']}"
+        return jsonify(user_list)
     elif request.method == 'POST':
         # Need manage_users permission
         user_roles = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
@@ -1093,10 +1108,12 @@ def api_users():
         conn.commit()
         conn.close()
         socketio.emit('users_update')
+        token_link = f"{get_base_url(request)}/invite/{invite_token}"
         return jsonify({
             "success": True, 
             "username": username,
-            "token": invite_token
+            "token": invite_token,
+            "token_link": token_link
         })
 
 @app.route('/api/db/users/<int:user_id>', methods=['PUT', 'DELETE'])
@@ -1237,12 +1254,6 @@ def update_settings():
     conn.commit()
     conn.close()
     
-    # Optional: apply local domain logic if it changed
-    local_domain = data.get('local_domain')
-    if local_domain:
-        # Simplistic approach: Just log it. Real mDNS/hosts file mapping is OS-specific and requires admin rights.
-        logger.info(f"Local domain set to {local_domain}. Please configure your DNS or Hosts file accordingly.")
-
     logger.info(f"Benutzer '{session.get('username')}' hat die Systemeinstellungen aktualisiert.")
     return jsonify({"success": True})
 
@@ -1403,10 +1414,6 @@ if __name__ == '__main__':
     except Exception:
         local_ip = "127.0.0.1"
     
-    try:
-        mdns_name = _socket.gethostname()
-    except Exception:
-        mdns_name = "warnzentrale"
 
     # Check if our nginx proxy is active
     nginx_active = False
@@ -1424,11 +1431,10 @@ if __name__ == '__main__':
     print("="*58)
     print(f"  Lokal:      {fmt_url('127.0.0.1', run_port)}")
     print(f"  Netzwerk:   {fmt_url(local_ip, run_port)}")
-    print(f"  mDNS:       {fmt_url(mdns_name + '.local', run_port)}")
     if nginx_active:
         print(f"  (nginx Proxy: Port 80 -> {run_port} | kein Port noetig)")
     elif os.name == 'nt':
-        print(f"  (Windows: Port {run_port} | mDNS fuer andere im Netzwerk)")
+        print(f"  (Windows: Port {run_port})")
     print("="*58)
     print("  Standard-Login: admin / 122")
     print("="*58 + "\n")

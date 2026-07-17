@@ -88,10 +88,6 @@ echo.
 echo   Erreichbar im Netzwerk (Port 5000):
 echo     %BLUE%http://127.0.0.1:5000%NC%
 echo     %BLUE%http://!LOCAL_IP!:5000%NC%
-echo     %BLUE%http://%COMPUTERNAME%.local:5000%NC%
-echo.
-echo   Tipp: Linux-Geraete mit diesem Programm sind
-echo   unter %BLUE%http://warnzentrale.local%NC% erreichbar (kein Port).
 echo.
 echo %YELLOW%  Standard-Zugangsdaten:%NC%
 echo %YELLOW%  Benutzername:%NC% admin
