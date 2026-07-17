@@ -66,7 +66,7 @@ WarnZentrale wird mit einem **One-Click-Installer** geliefert, der sämtliche Um
 
 ### 🪟 Installation auf Windows
 1. Lade dir das Repository als `.zip` herunter und entpacke es.
-2. Führe die Datei `install.bat` mit einem Doppelklick aus.
+2. Führe die Datei `Setup_Windows.bat` mit einem Doppelklick aus.
 3. Das Skript installiert Python 3 (über Winget, falls nicht vorhanden), erstellt eine virtuelle Umgebung (`.venv`), installiert alle Pakete (`Flask`/`FastAPI`, `psutil`, `Pillow` etc.) und richtet einen unsichtbaren Autostart über den Windows-Autostart-Ordner ein.
 4. **Standard-Zugang nach dem Start:** `http://localhost:5000` (Benutzer: `admin` | Passwort: `122`).
 
@@ -74,8 +74,8 @@ WarnZentrale wird mit einem **One-Click-Installer** geliefert, der sämtliche Um
 1. Klone das Repository oder lade die Dateien auf deinen Linux-Rechner.
 2. Mache das Installationsskript ausführbar und starte es:
    ```bash
-   chmod +x install.sh
-   ./install.sh
+   chmod +x Setup_Linux.sh
+   ./Setup_Linux.sh
    ```
 3. Das Skript richtet die Umgebung ein, initialisiert die SQLite-Datenbank und installiert einen `systemd`-Hintergrunddienst (`warnzentrale.service`), sodass das Dashboard nach jedem Booten des Rechners sofort erreichbar ist.
 
