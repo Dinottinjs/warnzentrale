@@ -967,6 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('vehicles_update', () => {
             if (typeof loadVehicles === 'function') loadVehicles();
+            if (typeof loadMissionVehicles === 'function') loadMissionVehicles();
         });
 
         socket.on('groups_update', () => {
@@ -1769,6 +1770,13 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({current_mission_id: null, status: 'available'})
         });
+        if(window.currentOpenMissionId) {
+            await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({log_text: `Fahrzeug abgezogen.`})
+            });
+        }
     };
 
     window.unassignGroup = async (id) => {
@@ -1777,13 +1785,11 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({current_mission_id: null})
         });
-    };
-        
         if(window.currentOpenMissionId) {
             await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({log_text: `Fahrzeug abgezogen.`})
+                body: JSON.stringify({log_text: `Gruppe abgezogen.`})
             });
         }
     };
