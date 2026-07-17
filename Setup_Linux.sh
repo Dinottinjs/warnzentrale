@@ -6,6 +6,10 @@ NC='\033[0m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 
+# Prevent ALL interactive prompts from apt-get
+export DEBIAN_FRONTEND=noninteractive
+
+clear
 echo -e "${YELLOW}==================================================${NC}"
 echo -e "${YELLOW}    FEUERWEHR-WARNZENTRALE - LINUX INSTALLER      ${NC}"
 echo -e "${YELLOW}==================================================${NC}"
@@ -19,6 +23,8 @@ if [ "$EUID" -ne 0 ]; then
   echo -e "  ${CYAN}sudo ./Setup_Linux.sh${NC}"
   exit 1
 fi
+
+USER_NAME=${SUDO_USER:-root}
 
 print_progress() {
     local percent=$1
@@ -42,51 +48,68 @@ print_progress() {
     echo ""
 }
 
-USER_NAME=${SUDO_USER:-root}
+# Helper: install a package only if not present
+install_pkg() {
+    if ! dpkg -s "$1" &> /dev/null; then
+        apt-get install -y -qq "$1" 2>&1 || true
+    fi
+}
 
-# 1. System-Pakete installieren
-print_progress 10 "Installiere System-Abhaengigkeiten..."
-apt-get update -qq > /dev/null 2>&1
-apt-get install -y python3 python3-pip python3-venv sqlite3 nginx avahi-daemon avahi-utils > /dev/null 2>&1
+# 1. Update package lists (with timeout)
+print_progress 5 "Aktualisiere Paketlisten..."
+echo -e "  ${CYAN}(apt-get update laeuft, bitte warten...)${NC}"
+apt-get update -qq -o Acquire::http::Timeout="15" -o Acquire::https::Timeout="15" > /dev/null 2>&1 || {
+    echo -e "${YELLOW}  Warnung: apt-get update fehlgeschlagen, fahre trotzdem fort...${NC}"
+    sleep 2
+}
+
+# 2. Install Python
+print_progress 10 "Installiere Python3..."
+install_pkg python3
+install_pkg python3-pip
+install_pkg python3-venv
 
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}[FEHLER] Python3 konnte nicht installiert werden.${NC}"
+    echo -e "Bitte manuell installieren: sudo apt-get install python3"
     exit 1
 fi
 
-# 2. Virtual Environment
+# 3. Virtual Environment
 print_progress 30 "Erstelle virtuelle Umgebung (.venv)..."
-python3 -m venv .venv
+python3 -m venv .venv 2>&1
 if [ $? -ne 0 ]; then
-    apt-get install -y python3-venv > /dev/null 2>&1
-    python3 -m venv .venv
+    install_pkg python3-venv
+    python3 -m venv .venv 2>&1
     if [ $? -ne 0 ]; then
         echo -e "${RED}[FEHLER] Virtuelle Umgebung konnte nicht erstellt werden.${NC}"
         exit 1
     fi
 fi
 
-# 3. Abhaengigkeiten installieren
-print_progress 55 "Installiere Python-Abhaengigkeiten..."
+# 4. Python-Abhaengigkeiten
+print_progress 50 "Installiere Python-Abhaengigkeiten..."
+echo -e "  ${CYAN}(pip install laeuft, bitte warten...)${NC}"
 source .venv/bin/activate
-python3 -m pip install --upgrade pip --disable-pip-version-check -q > /dev/null 2>&1
-pip install -r requirements.txt --disable-pip-version-check -q > /dev/null 2>&1
+python3 -m pip install --upgrade pip --disable-pip-version-check -q 2>&1
+pip install -r requirements.txt --disable-pip-version-check -q 2>&1
 if [ $? -ne 0 ]; then
     echo -e "${RED}[FEHLER] Python-Pakete konnten nicht installiert werden.${NC}"
     exit 1
 fi
 
-# 4. Datenbank initialisieren
-print_progress 70 "Initialisiere SQLite Datenbank..."
-python3 -c "import app; app.init_db()" > /dev/null 2>&1
+# 5. Datenbank initialisieren
+print_progress 65 "Initialisiere SQLite Datenbank..."
+python3 -c "import app; app.init_db()" 2>&1 || true
 
-# Berechtigungen setzen
 if [ -n "$SUDO_USER" ]; then
     chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_DIR"
 fi
 
-# 5. Nginx Reverse Proxy konfigurieren (Port 80 -> 5000)
-print_progress 78 "Konfiguriere nginx (Port 80 -> 5000)..."
+# 6. nginx installieren und konfigurieren
+print_progress 73 "Installiere nginx (Reverse Proxy)..."
+install_pkg nginx
+
 NGINX_CONF="/etc/nginx/sites-available/warnzentrale"
 cat > "$NGINX_CONF" << 'NGINXEOF'
 server {
@@ -107,14 +130,14 @@ server {
 }
 NGINXEOF
 
-# Bestehende Default-Konfig deaktivieren, eigene aktivieren
 rm -f /etc/nginx/sites-enabled/default
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/warnzentrale
+nginx -t > /dev/null 2>&1 && systemctl enable nginx > /dev/null 2>&1 && systemctl restart nginx > /dev/null 2>&1 || true
 
-nginx -t > /dev/null 2>&1 && systemctl enable nginx > /dev/null 2>&1 && systemctl restart nginx > /dev/null 2>&1
+# 7. Avahi/mDNS
+print_progress 80 "Installiere mDNS (avahi-daemon)..."
+install_pkg avahi-daemon
 
-# 6. Avahi/mDNS konfigurieren (erreichbar ohne Port)
-print_progress 83 "Konfiguriere mDNS (warnzentrale.local)..."
 mkdir -p /etc/avahi/services
 cat > "/etc/avahi/services/warnzentrale.service" << 'AVAHIEOF'
 <?xml version="1.0" standalone='no'?>
@@ -128,29 +151,28 @@ cat > "/etc/avahi/services/warnzentrale.service" << 'AVAHIEOF'
 </service-group>
 AVAHIEOF
 
-# Hostnamen auf warnzentrale setzen
-hostnamectl set-hostname warnzentrale > /dev/null 2>&1
+hostnamectl set-hostname warnzentrale > /dev/null 2>&1 || true
 if [ -f "/etc/avahi/avahi-daemon.conf" ]; then
     sed -i 's/^#*host-name=.*/host-name=warnzentrale/' /etc/avahi/avahi-daemon.conf 2>/dev/null || true
 fi
-systemctl enable avahi-daemon > /dev/null 2>&1
-systemctl restart avahi-daemon > /dev/null 2>&1
+systemctl enable avahi-daemon > /dev/null 2>&1 || true
+systemctl restart avahi-daemon > /dev/null 2>&1 || true
 
-# 7. Firewall oeffnen
-print_progress 88 "Konfiguriere Firewall..."
+# 8. Firewall
+print_progress 85 "Konfiguriere Firewall..."
 if command -v ufw &> /dev/null; then
-    ufw allow 80/tcp > /dev/null 2>&1
-    ufw allow 5000/tcp > /dev/null 2>&1
-    ufw --force enable > /dev/null 2>&1
+    ufw allow 80/tcp > /dev/null 2>&1 || true
+    ufw allow 5000/tcp > /dev/null 2>&1 || true
+    ufw --force enable > /dev/null 2>&1 || true
 fi
 if command -v firewall-cmd &> /dev/null; then
-    firewall-cmd --permanent --add-service=http > /dev/null 2>&1
-    firewall-cmd --permanent --add-port=5000/tcp > /dev/null 2>&1
-    firewall-cmd --reload > /dev/null 2>&1
+    firewall-cmd --permanent --add-service=http > /dev/null 2>&1 || true
+    firewall-cmd --permanent --add-port=5000/tcp > /dev/null 2>&1 || true
+    firewall-cmd --reload > /dev/null 2>&1 || true
 fi
 
-# 8. Systemd Service fuer die App einrichten
-print_progress 95 "Richte systemd Service ein..."
+# 9. Systemd Service
+print_progress 92 "Richte systemd Service ein..."
 SERVICE_NAME="warnzentrale"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -181,39 +203,39 @@ systemctl stop "$SERVICE_NAME" > /dev/null 2>&1
 sleep 1
 systemctl start "$SERVICE_NAME"
 
-# Pruefen ob Service laeuft
-sleep 3
+print_progress 100 "Pruefe ob Service laeuft..."
+sleep 4
+
 if ! systemctl is-active --quiet "$SERVICE_NAME"; then
     echo ""
-    echo -e "${RED}[WARNUNG] Service konnte nicht automatisch gestartet werden.${NC}"
-    systemctl status "$SERVICE_NAME" --no-pager -l
+    echo -e "${RED}[WARNUNG] Service nicht gestartet. Starte direkt...${NC}"
+    echo -e "Fehlerdetails:"
+    journalctl -u "$SERVICE_NAME" --no-pager -n 20
     echo ""
-    echo -e "${CYAN}Versuche manuellen Start...${NC}"
     cd "$PROJECT_DIR"
     source .venv/bin/activate
     nohup python3 app.py > /tmp/warnzentrale.log 2>&1 &
-    sleep 2
+    sleep 3
+    echo -e "${CYAN}Direkt-Start versucht. Log: /tmp/warnzentrale.log${NC}"
 fi
-
-print_progress 100 "Installation abgeschlossen!"
 
 IP=$(hostname -I | awk '{print $1}')
 
-echo ""
+clear
 echo -e "${GREEN}==================================================${NC}"
 echo -e "${GREEN}  [ERFOLG] Installation abgeschlossen!${NC}"
 echo -e "${GREEN}==================================================${NC}"
 echo ""
 echo -e "  Erreichbar im Netzwerk:"
-echo -e "    ${BLUE}http://$IP${NC}                (IP-Adresse, kein Port noetig)"
-echo -e "    ${BLUE}http://warnzentrale.local${NC}  (mDNS - selbes Netzwerk)"
+echo -e "    ${BLUE}http://$IP${NC}                (IP-Adresse)"
+echo -e "    ${BLUE}http://warnzentrale.local${NC}  (mDNS - kein Port noetig)"
 echo ""
 echo -e "  Service verwalten:"
 echo -e "    ${CYAN}sudo systemctl status warnzentrale${NC}"
 echo -e "    ${CYAN}sudo systemctl restart warnzentrale${NC}"
-echo -e "    ${CYAN}sudo journalctl -u warnzentrale -f${NC}  (Live-Logs)"
+echo -e "    ${CYAN}sudo journalctl -u warnzentrale -f${NC}"
 echo ""
-echo -e "${YELLOW}  Standard-Zugangsdaten (bitte nach Login aendern!):${NC}"
+echo -e "${YELLOW}  Standard-Zugangsdaten:${NC}"
 echo -e "    ${YELLOW}Benutzername:${NC} admin"
 echo -e "    ${YELLOW}Passwort:${NC}     122"
 echo ""
