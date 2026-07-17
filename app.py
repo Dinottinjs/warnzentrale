@@ -1408,18 +1408,11 @@ if __name__ == '__main__':
     except Exception:
         mdns_name = "warnzentrale"
 
-    # Check if nginx proxy is running on port 80 (Linux only)
+    # Check if our nginx proxy is active
     nginx_active = False
     if os.name != 'nt':  # Only relevant on Linux/Mac
-        try:
-            test_sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
-            test_sock.settimeout(0.3)
-            result = test_sock.connect_ex(('127.0.0.1', 80))
-            test_sock.close()
-            if result == 0 and run_port != 80:
-                nginx_active = True
-        except Exception:
-            pass
+        if os.path.exists('/etc/nginx/sites-enabled/warnzentrale'):
+            nginx_active = True
 
     def fmt_url(host, port, path=""):
         if port == 80 or nginx_active:

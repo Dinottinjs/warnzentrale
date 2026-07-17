@@ -112,16 +112,26 @@ if [ -n "$SUDO_USER" ]; then
     chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_DIR"
 fi
 
-# 6. nginx installieren und konfigurieren
-print_progress 73 "Installiere nginx (Reverse Proxy)..."
-install_pkg nginx
+# 6. nginx installieren und konfigurieren (nur wenn Port 80 frei ist)
+print_progress 73 "Pruefe Port 80 fuer Reverse Proxy..."
 
-NGINX_CONF="/etc/nginx/sites-available/warnzentrale"
-cat > "$NGINX_CONF" << 'NGINXEOF'
+PORT_80_IN_USE=false
+if ss -tuln | grep -q ":80 "; then
+    PORT_80_IN_USE=true
+fi
+
+NGINX_INSTALLED=false
+
+if [ "$PORT_80_IN_USE" = false ]; then
+    print_progress 75 "Installiere nginx (Reverse Proxy)..."
+    install_pkg nginx
+
+    NGINX_CONF="/etc/nginx/sites-available/warnzentrale"
+    cat > "$NGINX_CONF" << 'NGINXEOF'
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name _;
+    listen 80;
+    listen [::]:80;
+    server_name warnzentrale.local;
 
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -136,9 +146,14 @@ server {
 }
 NGINXEOF
 
-rm -f /etc/nginx/sites-enabled/default
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/warnzentrale
-nginx -t > /dev/null 2>&1 && systemctl enable nginx > /dev/null 2>&1 && systemctl restart nginx > /dev/null 2>&1 || true
+    ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/warnzentrale
+    nginx -t > /dev/null 2>&1 && systemctl enable nginx > /dev/null 2>&1 && systemctl restart nginx > /dev/null 2>&1 || true
+    NGINX_INSTALLED=true
+else
+    echo -e "${YELLOW}  Port 80 ist belegt (z.B. durch Pi-hole). Überspringe Nginx Setup.${NC}"
+    echo -e "  Die Warnzentrale wird ueber Port 5000 erreichbar sein."
+    sleep 3
+fi
 
 # 7. Avahi/mDNS
 print_progress 80 "Installiere mDNS (avahi-daemon)..."
@@ -233,8 +248,13 @@ echo -e "${GREEN}  [ERFOLG] Installation abgeschlossen!${NC}"
 echo -e "${GREEN}==================================================${NC}"
 echo ""
 echo -e "  Erreichbar im Netzwerk:"
-echo -e "    ${BLUE}http://$IP${NC}                (IP-Adresse)"
-echo -e "    ${BLUE}http://warnzentrale.local${NC}  (mDNS - kein Port noetig)"
+if [ "$NGINX_INSTALLED" = true ]; then
+    echo -e "    ${BLUE}http://$IP:5000${NC}             (IP-Adresse, Lokal)"
+    echo -e "    ${BLUE}http://warnzentrale.local${NC}   (mDNS - kein Port noetig)"
+else
+    echo -e "    ${BLUE}http://$IP:5000${NC}             (IP-Adresse)"
+    echo -e "    ${BLUE}http://warnzentrale.local:5000${NC} (mDNS - Port erforderlich da 80 belegt)"
+fi
 echo ""
 echo -e "  Service verwalten:"
 echo -e "    ${CYAN}sudo systemctl status warnzentrale${NC}"
