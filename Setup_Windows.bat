@@ -123,9 +123,10 @@ for /L %%i in (1, 1, 20) do (
 )
 
 cls
-echo %YELLOW%==================================================%NC%
+echo %YELLOW%===================================================%NC%
 echo %YELLOW%    FEUERWEHR-WARNZENTRALE - WINDOWS INSTALLER     %NC%
-echo %YELLOW%====================================================%NC%
+echo %YELLOW%===================================================%NC%
+echo %BLUE% (c) 2026 Maximilian Holzer - Lizenziert unter MIT%NC%
 echo.
 echo !RainbowLine!
 echo.

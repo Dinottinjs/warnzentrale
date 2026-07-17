@@ -1426,18 +1426,27 @@ if __name__ == '__main__':
             return f"http://{host}{path}"
         return f"http://{host}:{port}{path}"
 
-    print("\n" + "="*58)
-    print("  FEUERWEHR-WARNZENTRALE - GESTARTET")
-    print("="*58)
-    print(f"  Lokal:      {fmt_url('127.0.0.1', run_port)}")
-    print(f"  Netzwerk:   {fmt_url(local_ip, run_port)}")
+    if os.name == 'nt':
+        os.system('') # Enable VT100 ANSI processing in Windows console
+        
+    C_YELLOW = '\033[1;33m'
+    C_BLUE = '\033[0;34m'
+    C_CYAN = '\033[0;36m'
+    C_GREEN = '\033[0;32m'
+    C_NC = '\033[0m'
+
+    print(f"\n{C_YELLOW}{'='*58}{C_NC}")
+    print(f"{C_YELLOW}  FEUERWEHR-WARNZENTRALE - GESTARTET{C_NC}")
+    print(f"{C_YELLOW}{'='*58}{C_NC}")
+    print(f"  Lokal:      {C_BLUE}{fmt_url('127.0.0.1', run_port)}{C_NC}")
+    print(f"  Netzwerk:   {C_BLUE}{fmt_url(local_ip, run_port)}{C_NC}")
     if nginx_active:
         print(f"  (nginx Proxy: Port 80 -> {run_port} | kein Port noetig)")
     elif os.name == 'nt':
         print(f"  (Windows: Port {run_port})")
-    print("="*58)
-    print("  Standard-Login: admin / 122")
-    print("="*58 + "\n")
+    print(f"{C_GREEN}{'='*58}{C_NC}")
+    print(f"  Standard-Login: {C_CYAN}admin{C_NC} / {C_CYAN}122{C_NC}")
+    print(f"{C_GREEN}{'='*58}{C_NC}\n")
 
     # Use socketio.run instead of app.run
     socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)

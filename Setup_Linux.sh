@@ -43,6 +43,7 @@ print_progress() {
     echo -e "${YELLOW}==================================================${NC}"
     echo -e "${YELLOW}    FEUERWEHR-WARNZENTRALE - LINUX INSTALLER      ${NC}"
     echo -e "${YELLOW}==================================================${NC}"
+    echo -e "${CYAN} (c) 2026 Maximilian Holzer - Lizenziert unter MIT${NC}"
     echo ""
     echo -e "${BLUE}Fortschritt: ${bar} $percent% ${NC}"
     echo -e "${GREEN}Status:${NC} $message"
@@ -222,6 +223,11 @@ fi
 IP=$(hostname -I | awk '{print $1}')
 
 clear
+echo -e "${YELLOW}==================================================${NC}"
+echo -e "${YELLOW}    FEUERWEHR-WARNZENTRALE - LINUX INSTALLER      ${NC}"
+echo -e "${YELLOW}==================================================${NC}"
+echo -e "${CYAN} (c) 2026 Maximilian Holzer - Lizenziert unter MIT${NC}"
+echo ""
 echo -e "${GREEN}==================================================${NC}"
 echo -e "${GREEN}  [ERFOLG] Installation abgeschlossen!${NC}"
 echo -e "${GREEN}==================================================${NC}"
