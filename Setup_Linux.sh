@@ -63,11 +63,17 @@ apt-get update -qq -o Acquire::http::Timeout="15" -o Acquire::https::Timeout="15
     sleep 2
 }
 
-# 2. Install Python
-print_progress 10 "Installiere Python3..."
+# 2. Install Python and C build tools
+print_progress 10 "Installiere Python3 und Build-Tools..."
 install_pkg python3
 install_pkg python3-pip
 install_pkg python3-venv
+install_pkg python3-dev
+install_pkg build-essential
+install_pkg libssl-dev
+install_pkg libffi-dev
+install_pkg libjpeg-dev
+install_pkg zlib1g-dev
 
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}[FEHLER] Python3 konnte nicht installiert werden.${NC}"
@@ -91,8 +97,8 @@ fi
 print_progress 50 "Installiere Python-Abhaengigkeiten..."
 echo -e "  ${CYAN}(pip install laeuft, bitte warten...)${NC}"
 source .venv/bin/activate
-python3 -m pip install --upgrade pip --disable-pip-version-check -q 2>&1
-pip install -r requirements.txt --disable-pip-version-check -q 2>&1
+python3 -m pip install --upgrade pip setuptools wheel --disable-pip-version-check -q 2>&1
+pip install -r requirements.txt --disable-pip-version-check --prefer-binary -q 2>&1
 if [ $? -ne 0 ]; then
     echo -e "${RED}[FEHLER] Python-Pakete konnten nicht installiert werden.${NC}"
     exit 1
