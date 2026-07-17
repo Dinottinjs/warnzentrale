@@ -148,7 +148,7 @@
                             <button id="btn-expand-map" onclick="toggleMapExpand()" title="Karte vergrößern" class="text-gray-400 hover:text-white transition-colors px-2 py-1 rounded hover:bg-gray-700">
                                 <i id="map-expand-icon" class="fa-solid fa-expand"></i>
                             </button>
-                            <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm btn-glow">
+                            <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-colors text-sm btn-glow" data-req-perm="manage_missions">
                                 <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
                             </button>
                         </div>
@@ -181,7 +181,7 @@
         <div id="tab-missions" class="tab-content hidden flex-1 flex-col space-y-6 overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold"><i class="fa-solid fa-truck-fast mr-2"></i> Aktive Einsätze & Koordination</h2>
-                <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="btn-glow bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 text-black font-bold px-4 py-2 rounded shadow transition-colors">
+                <button onclick="document.getElementById('modal-new-mission').classList.remove('hidden')" class="btn-glow bg-neon-green hover:bg-green-500 transition-all hover:-translate-y-0.5 text-black font-bold px-4 py-2 rounded shadow transition-colors" data-req-perm="manage_missions">
                     <i class="fa-solid fa-plus mr-2"></i> Neuer Einsatz
                 </button>
             </div>
@@ -231,7 +231,7 @@
                         <div class="w-1/2 flex flex-col">
                             <h4 class="p-3 border-b border-gray-200 dark:border-gray-700 font-bold bg-gray-50 dark:bg-gray-900/20">Einsatzlog</h4>
                             <div id="mission-logs-container" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm font-mono bg-gray-50 dark:bg-gray-900/10"></div>
-                            <div class="p-3 border-t border-gray-200 dark:border-gray-700 glass-panel">
+                            <div class="p-3 border-t border-gray-200 dark:border-gray-700 glass-panel" data-req-perm="edit_log">
                                 <form id="mission-log-form" class="flex space-x-2">
                                     <input type="text" id="mission-log-input" class="flex-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded p-2 text-sm focus:border-neon-green outline-none" placeholder="Neuer Log-Eintrag...">
                                     <button type="submit" class="bg-neon-green text-black font-bold px-3 py-2 rounded"><i class="fa-solid fa-paper-plane"></i></button>
@@ -252,7 +252,7 @@
             <div class="glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-4 mt-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold"><i class="fa-solid fa-car mr-2"></i> Globale Fahrzeug-/Ausrüstungsübersicht</h3>
-                    <button onclick="document.getElementById('modal-new-vehicle').classList.remove('hidden')" class="btn-glow bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded transition-colors">Fahrzeug hinzufügen</button>
+                    <button onclick="document.getElementById('modal-new-vehicle').classList.remove('hidden')" class="btn-glow bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm px-3 py-1 rounded transition-colors" data-req-perm="manage_vehicles">Fahrzeug hinzufügen</button>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
@@ -360,7 +360,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Group Management Form -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full">
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full" data-req-perm="manage_groups">
                     <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Neue Gruppe erstellen</h3>
                     <form id="group-form" class="space-y-4 flex-1 flex flex-col justify-between">
                         <div class="space-y-4">
@@ -376,7 +376,7 @@
                 </div>
 
                 <!-- Create Member -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full">
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full" data-req-perm="manage_users">
                     <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-user-plus mr-2"></i> Neues Mitglied anlegen</h3>
                     <form id="create-user-form" class="space-y-4 flex-1 flex flex-col justify-between">
                         <div class="space-y-4">
@@ -392,7 +392,7 @@
             </div>
 
             <!-- Existing Groups List -->
-            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6" data-req-perm="manage_groups">
                 <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-folder-open mr-2"></i> Vorhandene Gruppen</h3>
                 <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- JS injected cards -->
@@ -400,7 +400,7 @@
             </div>
 
             <!-- Existing Members List -->
-            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6">
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6" data-req-perm="manage_users">
                 <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-address-book mr-2"></i> Vorhandene Mitglieder</h3>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-left text-sm whitespace-nowrap">
@@ -540,6 +540,33 @@
                 </div>
                 {% endif %}
 
+                <!-- Map Section -->
+                {% if user_perms.get('manage_settings', False) or current_role == 'Admin' %}
+                <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+                    <button class="w-full px-6 py-4 text-left font-bold text-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none" onclick="document.getElementById('acc-section-map').classList.toggle('hidden')">
+                        <span>📍 Karten-Einstellungen</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="acc-section-map" class="p-6 glass-panel hidden">
+                        <form id="map-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Feuerwache Breitengrad (Latitude)</label>
+                                    <input type="text" id="sys-station-lat" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="z.B. 48.2082">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Feuerwache Längengrad (Longitude)</label>
+                                    <input type="text" id="sys-station-lng" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="z.B. 16.3738">
+                                </div>
+                            </div>
+                            <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-all">
+                                <i class="fa-solid fa-save mr-2"></i> Karten-Einstellungen speichern
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Network Section -->
                 {% if current_role == 'Admin' %}
                 <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
@@ -656,16 +683,19 @@
                 <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col h-64">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100"><i class="fa-solid fa-file-code mr-2"></i> Live System Logs (JSON)</h3>
-                        <button id="btn-refresh-logs" class="text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-sync"></i></button>
+                        <div>
+                            <a href="/api/system/logs/download" class="text-neon-green hover:text-white transition-colors mr-4" title="Logs herunterladen"><i class="fa-solid fa-download"></i></a>
+                            <button id="btn-refresh-logs" class="text-gray-500 hover:text-white transition-colors" title="Logs neu laden"><i class="fa-solid fa-sync"></i></button>
+                        </div>
                     </div>
-                    <div id="log-viewer" class="flex-1 bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-2xl overflow-y-auto whitespace-pre-wrap shadow-inner">
+                    <div id="log-viewer" class="flex-1 min-h-0 bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-2xl overflow-y-auto whitespace-pre-wrap shadow-inner">
                         Lade Logs...
                     </div>
                 </div>
             </div>
 
             <!-- Rechte Matrix (ZeNmOdZ Design) -->
-            <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md">
+            <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md" data-req-perm="manage_roles">
                 <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-gray-100"><i class="fa-solid fa-sliders mr-2"></i> Rang-Berechtigungen (Matrix)</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Benutze die Schalter, um Rechte dynamisch per LiveSocket anzupassen: <span class="text-green-500 font-bold">Grün (Erlaubt)</span> | <span class="text-gray-500 font-bold">Grau (Verboten)</span></p>
                 

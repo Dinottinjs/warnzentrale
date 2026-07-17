@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let missionLines = {};
     let missionMarkersLocal = {};
+    let stationMarker = null;
     const centralLocation = [47.5162, 14.5501]; // Default Center
 
     const drawMissionsOnMap = (missions) => {
@@ -329,7 +330,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Remove old lines and markers
         for (let id in missionLines) {
             if (!currentIds.includes(parseInt(id))) {
-                map.removeLayer(missionLines[id]);
+                if (missionLines[id] !== 'fetching') {
+                    map.removeLayer(missionLines[id]);
+                }
                 delete missionLines[id];
             }
         }
@@ -338,6 +341,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 map.removeLayer(missionMarkersLocal[id]);
                 delete missionMarkersLocal[id];
             }
+        }
+
+        const sLatStr = document.getElementById('sys-station-lat')?.value;
+        const sLngStr = document.getElementById('sys-station-lng')?.value;
+        let startLoc = null;
+        
+        if (sLatStr && sLngStr) {
+            startLoc = [parseFloat(sLatStr), parseFloat(sLngStr)];
+            if (!stationMarker) {
+                const icon = L.divIcon({ className: 'station-div-icon', html: '<div style="font-size:24px; text-shadow: 0 0 5px black;">🚒</div>', iconSize:[24,24], iconAnchor:[12,12] });
+                stationMarker = L.marker(startLoc, {icon, zIndexOffset: 1000}).bindPopup(`<b>Feuerwache</b>`).addTo(map);
+            } else {
+                stationMarker.setLatLng(startLoc);
+            }
+        } else if (stationMarker) {
+            map.removeLayer(stationMarker);
+            stationMarker = null;
         }
 
         for (let m of missions) {
@@ -361,16 +381,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     missionMarkersLocal[m.id] = marker;
                 }
 
-                // Draw Line
-                if (!missionLines[m.id]) {
+                // Draw Route
+                if (!missionLines[m.id] && startLoc) {
                     const lineColor = m.color_code || '#e11d48';
-                    const polyline = L.polyline([centralLocation, targetCoords], {
-                        color: lineColor,
-                        weight: 4,
-                        opacity: 0.8,
-                        dashArray: '10, 10'
-                    }).addTo(map);
-                    missionLines[m.id] = polyline;
+                    // We set a dummy line to prevent multiple fetches
+                    missionLines[m.id] = 'fetching';
+                    
+                    fetch(`https://router.project-osrm.org/route/v1/driving/${startLoc[1]},${startLoc[0]};${targetCoords[1]},${targetCoords[0]}?geometries=geojson`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (missionLines[m.id] !== 'fetching') return; // Mission was deleted or re-rendered
+                        if(data.routes && data.routes[0]) {
+                            const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                            const polyline = L.polyline(coords, {
+                                color: lineColor,
+                                weight: 4,
+                                opacity: 0.8
+                            }).addTo(map);
+                            missionLines[m.id] = polyline;
+                        } else { throw new Error('No route'); }
+                    }).catch(err => {
+                        if (missionLines[m.id] !== 'fetching') return;
+                        const polyline = L.polyline([startLoc, targetCoords], {
+                            color: lineColor,
+                            weight: 4,
+                            opacity: 0.8,
+                            dashArray: '10, 10'
+                        }).addTo(map);
+                        missionLines[m.id] = polyline;
+                    });
                 }
             }
         }
@@ -920,15 +959,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         socket.on('missions_update', () => {
-            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
-                loadMissions();
-            }
+            if (typeof loadMissions === 'function') loadMissions();
         });
 
         socket.on('vehicles_update', () => {
-            if (document.querySelector('.tab-btn[data-tab="missions"]')?.classList.contains('active')) {
-                loadVehicles();
-            }
+            if (typeof loadVehicles === 'function') loadVehicles();
         });
 
         // Listen to live mission log updates
@@ -1086,17 +1121,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             
             let port = 5000, domain = '', mode = 'lan', ssid = '';
+            let stationLat = '', stationLng = '';
             data.forEach(item => {
                 if(item.key === 'port') port = item.value;
                 if(item.key === 'local_domain') domain = item.value;
                 if(item.key === 'network_mode') mode = item.value;
                 if(item.key === 'wifi_ssid') ssid = item.value;
+                if(item.key === 'station_lat') stationLat = item.value;
+                if(item.key === 'station_lng') stationLng = item.value;
             });
             
             const sysPort = document.getElementById('sys-port');
             const sysDomain = document.getElementById('sys-domain');
+            const sysStationLat = document.getElementById('sys-station-lat');
+            const sysStationLng = document.getElementById('sys-station-lng');
             if(sysPort) sysPort.value = port;
             if(sysDomain) sysDomain.value = domain;
+            if(sysStationLat) sysStationLat.value = stationLat;
+            if(sysStationLng) sysStationLng.value = stationLng;
             
             // Set radio button and toggle config
             const modeRadios = document.getElementsByName('network_mode');
@@ -1146,6 +1188,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(res.ok) {
                     showToast('Systemkonfiguration gespeichert.', 'success');
                     alert('Falls du den Port geändert hast, musst du das Backend (via Systemsteuerung oder Konsole) neu starten, damit die Änderung wirksam wird.');
+                }
+            } catch(e) {
+                showToast('Fehler beim Speichern', 'error');
+            }
+        });
+    }
+
+    const mapForm = document.getElementById('map-form');
+    if(mapForm) {
+        mapForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                station_lat: document.getElementById('sys-station-lat').value,
+                station_lng: document.getElementById('sys-station-lng').value
+            };
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if(res.ok) {
+                    showToast('Karten-Einstellungen gespeichert.', 'success');
+                    if(map) {
+                        // Reload map markers to show station
+                        if(typeof loadMissions === 'function') loadMissions();
+                    }
                 }
             } catch(e) {
                 showToast('Fehler beim Speichern', 'error');

@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import datetime
 from functools import wraps
-from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory, make_response
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for, send_from_directory, make_response, send_file
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -647,6 +647,15 @@ def api_system_security():
         "session_timeout": get_setting("session_timeout", "60")
     })
 
+@app.route('/api/system/logs/download', methods=['GET'])
+@login_required
+@permission_required('manage_system')
+def download_logs():
+    try:
+        return send_file(log_file, as_attachment=True, download_name='system_logs.jsonl', mimetype='application/jsonl')
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/system/update', methods=['POST'])
 @permission_required('manage_system')
 def check_and_update():
@@ -836,6 +845,10 @@ def api_missions():
         conn.close()
         return jsonify([dict(r) for r in rows])
     elif request.method == 'POST':
+        user_roles = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        if not user_roles or not json.loads(user_roles['permissions']).get('manage_missions', False):
+            conn.close()
+            return jsonify({"error": "Unauthorized"}), 403
         data = request.json
         c = conn.execute("INSERT INTO missions (title, description, address, lat, lng, group_id, color_code, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
                          (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('group_id'), data.get('color_code', '#e11d48'), session['user_id']))
@@ -848,6 +861,7 @@ def api_missions():
 
 @app.route('/api/missions/<int:mission_id>', methods=['PUT', 'DELETE'])
 @login_required
+@permission_required('manage_missions')
 def api_mission_detail(mission_id):
     conn = get_db()
     if request.method == 'DELETE':
@@ -878,6 +892,10 @@ def api_vehicles():
         conn.close()
         return jsonify([dict(r) for r in rows])
     elif request.method == 'POST':
+        user_roles = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        if not user_roles or not json.loads(user_roles['permissions']).get('manage_vehicles', False):
+            conn.close()
+            return jsonify({"error": "Unauthorized"}), 403
         data = request.json
         conn.execute("INSERT INTO vehicles (name, type, equipment_list, checklist_state, status) VALUES (?, ?, ?, ?, ?)", 
                      (data['name'], data.get('type',''), data.get('equipment_list',''), '{}', data.get('status','available')))
@@ -889,6 +907,7 @@ def api_vehicles():
 
 @app.route('/api/vehicles/<int:vehicle_id>', methods=['PUT', 'DELETE'])
 @login_required
+@permission_required('manage_vehicles')
 def api_vehicle_detail(vehicle_id):
     conn = get_db()
     if request.method == 'DELETE':
@@ -917,6 +936,10 @@ def api_mission_logs(mission_id):
         conn.close()
         return jsonify([dict(r) for r in rows])
     elif request.method == 'POST':
+        user_roles = conn.execute("SELECT roles.permissions FROM users JOIN roles ON users.role_id = roles.id WHERE users.id = ?", (session['user_id'],)).fetchone()
+        if not user_roles or not json.loads(user_roles['permissions']).get('edit_log', False):
+            conn.close()
+            return jsonify({"error": "Unauthorized"}), 403
         data = request.json
         conn.execute("INSERT INTO mission_logs (mission_id, log_text, user_id) VALUES (?, ?, ?)", 
                      (mission_id, data['log_text'], session['user_id']))
@@ -988,7 +1011,7 @@ def manage_user(user_id):
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         conn.close()
-        logger.info(f"User ID {user_id} deleted.")
+        logger.info(f"Benutzer '{session.get('username')}' hat Mitglied-ID {user_id} gelöscht.")
         socketio.emit('users_update')
         return jsonify({"success": True})
     elif request.method == 'PUT':
