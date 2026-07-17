@@ -81,19 +81,22 @@ for /f "tokens=2 delims=:" %%I in ('ipconfig ^| findstr /i "IPv4"') do (
 set "LOCAL_IP=%LOCAL_IP: =%"
 
 echo.
-echo %GREEN%===================================================%NC%
+echo %GREEN%====================================================%NC%
 echo %GREEN%  [ERFOLG] Installation abgeschlossen!%NC%
-echo %GREEN%===================================================%NC%
+echo %GREEN%====================================================%NC%
 echo.
-echo   Erreichbar im Netzwerk:
-echo     %BLUE%http://127.0.0.1:5000%NC%             (Lokal)
-echo     %BLUE%http://!LOCAL_IP!:5000%NC%    (Netzwerk-IP)
-echo     %BLUE%http://%COMPUTERNAME%.local:5000%NC%   (mDNS)
+echo   Erreichbar im Netzwerk (Port 5000):
+echo     %BLUE%http://127.0.0.1:5000%NC%
+echo     %BLUE%http://!LOCAL_IP!:5000%NC%
+echo     %BLUE%http://%COMPUTERNAME%.local:5000%NC%
 echo.
-echo %YELLOW%  Standard-Zugangsdaten (bitte nach Login aendern!):%NC%
+echo   Tipp: Linux-Geraete mit diesem Programm sind
+echo   unter %BLUE%http://warnzentrale.local%NC% erreichbar (kein Port).
+echo.
+echo %YELLOW%  Standard-Zugangsdaten:%NC%
 echo %YELLOW%  Benutzername:%NC% admin
 echo %YELLOW%  Passwort:%NC%     122
-echo %GREEN%===================================================%NC%
+echo %GREEN%====================================================%NC%
 start http://127.0.0.1:5000
 "!PROJECT_DIR!\.venv\Scripts\python.exe" "app.py"
 pause

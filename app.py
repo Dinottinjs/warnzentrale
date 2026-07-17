@@ -1408,34 +1408,37 @@ if __name__ == '__main__':
     except Exception:
         mdns_name = "warnzentrale"
 
-    # Check if nginx proxy is running on port 80
+    # Check if nginx proxy is running on port 80 (Linux only)
     nginx_active = False
-    try:
-        test_sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
-        test_sock.settimeout(0.3)
-        result = test_sock.connect_ex(('127.0.0.1', 80))
-        test_sock.close()
-        if result == 0 and run_port != 80:
-            nginx_active = True
-    except Exception:
-        pass
+    if os.name != 'nt':  # Only relevant on Linux/Mac
+        try:
+            test_sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+            test_sock.settimeout(0.3)
+            result = test_sock.connect_ex(('127.0.0.1', 80))
+            test_sock.close()
+            if result == 0 and run_port != 80:
+                nginx_active = True
+        except Exception:
+            pass
 
     def fmt_url(host, port, path=""):
         if port == 80 or nginx_active:
             return f"http://{host}{path}"
         return f"http://{host}:{port}{path}"
 
-    print("\n" + "="*54)
+    print("\n" + "="*58)
     print("  FEUERWEHR-WARNZENTRALE - GESTARTET")
-    print("="*54)
+    print("="*58)
     print(f"  Lokal:      {fmt_url('127.0.0.1', run_port)}")
     print(f"  Netzwerk:   {fmt_url(local_ip, run_port)}")
     print(f"  mDNS:       {fmt_url(mdns_name + '.local', run_port)}")
     if nginx_active:
-        print(f"  (nginx Proxy aktiv: Port 80 -> {run_port})")
-    print("="*54)
+        print(f"  (nginx Proxy: Port 80 -> {run_port} | kein Port noetig)")
+    elif os.name == 'nt':
+        print(f"  (Windows: Port {run_port} | mDNS fuer andere im Netzwerk)")
+    print("="*58)
     print("  Standard-Login: admin / 122")
-    print("="*54 + "\n")
+    print("="*58 + "\n")
 
     # Use socketio.run instead of app.run
     socketio.run(app, host='0.0.0.0', port=run_port, debug=False, allow_unsafe_werkzeug=True)
