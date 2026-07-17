@@ -88,7 +88,9 @@ formatter = JsonFormatter()
 file_handler = logging.FileHandler(log_file, encoding='utf-8')
 file_handler.setFormatter(formatter)
 stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
+# Use a standard text formatter for the console so it stays colored and readable
+console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler.setFormatter(console_formatter)
 
 logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 logger = logging.getLogger(__name__)
@@ -535,6 +537,11 @@ def index():
             user_perms = json.loads(user['permissions']) if user['permissions'] else {}
         except Exception:
             user_perms = {}
+            
+    conn = get_db()
+    station_lat_row = conn.execute("SELECT value FROM settings WHERE key = 'station_lat'").fetchone()
+    has_station = bool(station_lat_row and station_lat_row['value'] and station_lat_row['value'].strip())
+    conn.close()
 
     import time
     sys_version = int(time.time())
@@ -545,6 +552,7 @@ def index():
         current_role=current_role,
         current_group_id=current_group_id,
         has_default_password=has_default_password,
+        has_station=has_station,
         user_perms=user_perms,
         sys_version=sys_version
     ))
@@ -908,8 +916,16 @@ def api_mission_detail(mission_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
+        status = data.get('status', 'active')
         conn.execute("UPDATE missions SET title = ?, description = ?, address = ?, lat = ?, lng = ?, status = ?, color_code = ? WHERE id = ?", 
-                     (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), data.get('status', 'active'), data.get('color_code', '#e11d48'), mission_id))
+                     (data['title'], data.get('description',''), data.get('address',''), data.get('lat'), data.get('lng'), status, data.get('color_code', '#e11d48'), mission_id))
+        
+        if status == 'completed':
+            conn.execute("UPDATE vehicles SET current_mission_id = NULL, status = 'available' WHERE current_mission_id = ?", (mission_id,))
+            conn.execute("UPDATE groups SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
+            socketio.emit('vehicles_update')
+            socketio.emit('groups_update')
+            
         conn.commit()
         conn.close()
         logger.info(f"Benutzer '{session.get('username')}' hat den Einsatz '{data.get('title', mission_id)}' aktualisiert.")

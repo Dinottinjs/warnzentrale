@@ -325,12 +325,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const drawMissionsOnMap = (missions) => {
         if (!map) return;
         
-        const currentIds = missions.map(m => m.id);
+        const visibleActiveMissions = missions.filter(m => {
+            if (m.status !== 'active' || !m.lat || !m.lng) return false;
+            if (window.currentRole === 'Admin') return true;
+            if (window.currentGroupId && window.currentGroupId == m.group_id) return true;
+            if (m.assigned_groups && m.assigned_groups.some(g => g.id == window.currentGroupId)) return true;
+            return false;
+        });
+
+        const currentIds = visibleActiveMissions.map(m => m.id);
         
         // Remove old lines and markers
         for (let id in missionLines) {
             if (!currentIds.includes(parseInt(id))) {
-                if (missionLines[id] !== 'fetching') {
+                if (missionLines[id] !== 'fetching' && map.hasLayer(missionLines[id])) {
                     map.removeLayer(missionLines[id]);
                 }
                 delete missionLines[id];
@@ -338,7 +346,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         for (let id in missionMarkersLocal) {
             if (!currentIds.includes(parseInt(id))) {
-                map.removeLayer(missionMarkersLocal[id]);
+                if(map.hasLayer(missionMarkersLocal[id])) {
+                    map.removeLayer(missionMarkersLocal[id]);
+                }
                 delete missionMarkersLocal[id];
             }
         }
@@ -360,17 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
             stationMarker = null;
         }
 
-        for (let m of missions) {
-            // Visibility Check
-            let isVisible = false;
-            if (window.currentRole === 'Admin') {
-                isVisible = true;
-            } else if (window.currentGroupId && window.currentGroupId == m.group_id) {
-                isVisible = true;
-            }
-
-            if (isVisible && m.lat && m.lng && m.status === 'active') {
-                const targetCoords = [m.lat, m.lng];
+        for (let m of visibleActiveMissions) {
+            const targetCoords = [m.lat, m.lng];
                 
                 // Draw Marker
                 if (!missionMarkersLocal[m.id]) {
@@ -411,7 +412,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         missionLines[m.id] = polyline;
                     });
                 }
-            }
         }
     };
 
@@ -988,12 +988,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // If already showing token, hide it
+            // If already showing token, copy it
             if (btn.dataset.showing === 'true') {
-                btn.innerHTML = '<i class="fa-solid fa-key"></i>';
-                btn.dataset.showing = 'false';
-                btn.classList.replace('bg-gray-500', 'bg-blue-600');
-                btn.classList.replace('hover:bg-gray-600', 'hover:bg-blue-700');
+                const tokenLink = window.location.origin + '/invite/' + token;
+                navigator.clipboard.writeText(tokenLink).then(() => {
+                    showToast('Einladungs-Link kopiert!', 'success');
+                }).catch(() => {
+                    showToast('Konnte Link nicht kopieren.', 'error');
+                });
                 return;
             }
 
@@ -1010,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.success) {
                     const tokenLink = window.location.origin + '/invite/' + token;
                     // Show it inline on the button
-                    btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-eye-slash ml-1"></i>`;
+                    btn.innerHTML = `<span class="font-mono">${tokenLink}</span> <i class="fa-solid fa-copy ml-1"></i>`;
                     btn.dataset.showing = 'true';
                     btn.classList.replace('bg-blue-600', 'bg-gray-500');
                     btn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-600');
@@ -1414,6 +1416,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 gSelect.innerHTML = groups.map(g => `<option value="${g.id}" data-color="${g.color || '#e11d48'}">${g.group_name}</option>`).join('');
             }
             
+            missions.forEach(m => {
+                m.assigned_groups = groups.filter(g => g.current_mission_id === m.id);
+            });
+            
             drawMissionsOnMap(missions);
         } catch(e) {
             console.error(e);
@@ -1619,11 +1625,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (mission.status === 'completed') {
                     btnComplete.classList.add('hidden');
-                    if (document.getElementById('assign-vehicle-container')) document.getElementById('assign-vehicle-container').classList.add('hidden');
-                    if (document.getElementById('assign-group-container')) document.getElementById('assign-group-container').classList.add('hidden');
+                    if (document.getElementById('mission-assign-section')) document.getElementById('mission-assign-section').classList.add('hidden');
                 } else {
-                    if (document.getElementById('assign-vehicle-container')) document.getElementById('assign-vehicle-container').classList.remove('hidden');
-                    if (document.getElementById('assign-group-container')) document.getElementById('assign-group-container').classList.remove('hidden');
+                    if (document.getElementById('mission-assign-section')) document.getElementById('mission-assign-section').classList.remove('hidden');
                 }
 
                 loadVehicles();
@@ -1884,7 +1888,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="flex space-x-2">
                                     <button onclick="openEditMemberModal(${u.id})" class="text-xs text-blue-500 hover:text-blue-700"><i class="fa-solid fa-pen"></i></button>
                                     <button onclick="removeUserFromGroup(${u.id})" class="text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-user-minus"></i></button>
-                                    <button onclick="deleteUser(${u.id})" class="text-xs text-red-700 hover:text-red-900"><i class="fa-solid fa-trash"></i></button>
                                 </div>
                             </div>
                         `).join('');
