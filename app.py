@@ -375,11 +375,14 @@ def permission_required(perm_name):
             
             try:
                 perms = json.loads(user['permissions'])
-                if perms.get('all', False) or perms.get(perm_name, False):
-                    return f(*args, **kwargs)
-            except:
-                pass
-            return jsonify({"error": "Forbidden"}), 403
+                has_perm = perms.get('all', False) or perms.get(perm_name, False)
+            except Exception as e:
+                logger.error(f"Error parsing permissions: {e}")
+                has_perm = False
+                
+            if has_perm:
+                return f(*args, **kwargs)
+            return jsonify({"error": "Unauthorized"}), 403
         return decorated_function
     return decorator
 
