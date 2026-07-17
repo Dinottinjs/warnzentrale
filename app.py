@@ -97,14 +97,20 @@ logger = logging.getLogger(__name__)
 
 def schedule_restart():
     def restart_task():
-        import time, subprocess, sys, os
+        import time, sys, os
         time.sleep(1.5)
-        # Start new instance and exit this one to free the port
-        kwargs = {}
+        # Replace the current process in-place (same console window)
         if os.name == 'nt':
-            kwargs['creationflags'] = subprocess.CREATE_NEW_CONSOLE
-        subprocess.Popen([sys.executable, 'app.py', '--restarted'], close_fds=True, **kwargs)
-        os._exit(0)
+            # On Windows os.execv is not reliable, use Popen without new console
+            import subprocess
+            subprocess.Popen(
+                [sys.executable, os.path.abspath('app.py'), '--restarted'],
+                close_fds=True,
+                creationflags=0  # 0 = inherit current console, no new window
+            )
+            os._exit(0)
+        else:
+            os.execv(sys.executable, [sys.executable, 'app.py', '--restarted'])
     import threading
     threading.Thread(target=restart_task).start()
 
@@ -939,7 +945,7 @@ def api_mission_detail(mission_id):
         
         if status == 'completed' and old_mission and old_mission['status'] != 'completed':
             vehicles = conn.execute("SELECT id, name, type FROM vehicles WHERE current_mission_id = ?", (mission_id,)).fetchall()
-            groups = conn.execute("SELECT id, name FROM groups WHERE current_mission_id = ?", (mission_id,)).fetchall()
+            groups = conn.execute("SELECT id, group_name AS name FROM groups WHERE current_mission_id = ?", (mission_id,)).fetchall()
             
             import json
             assigned_vehicles = json.dumps([dict(v) for v in vehicles])
