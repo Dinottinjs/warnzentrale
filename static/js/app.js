@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (initialRole) {
             window.currentRole = initialRole;
-            if (roleEl) roleEl.innerHTML = window.getRoleBadge(initialRole);
+            if (roleEl) roleEl.innerHTML = `<span class="text-green-500 font-bold">${initialRole}</span>`;
             if (centerRoleEl) centerRoleEl.innerHTML = window.getRoleBadge(initialRole);
         }
     };
@@ -926,7 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 const roleEl = document.getElementById('header-user-role');
                                 const centerRoleEl = document.getElementById('header-center-role');
                                 if (window.currentRole !== myRole.role_name) {
-                                    if (roleEl) roleEl.innerHTML = window.getRoleBadge(myRole.role_name);
+                                    if (roleEl) roleEl.innerHTML = `<span class="text-green-500 font-bold">${myRole.role_name}</span>`;
                                     if (centerRoleEl) centerRoleEl.innerHTML = window.getRoleBadge(myRole.role_name);
                                     window.currentRole = myRole.role_name;
                                 }
@@ -967,6 +967,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.on('vehicles_update', () => {
             if (typeof loadVehicles === 'function') loadVehicles();
+        });
+
+        socket.on('groups_update', () => {
+            if (typeof loadGroupsManagement === 'function') loadGroupsManagement();
+            if (typeof loadMissionGroups === 'function') loadMissionGroups();
         });
 
         // Listen to live mission log updates
@@ -1202,9 +1207,37 @@ document.addEventListener('DOMContentLoaded', () => {
     if(mapForm) {
         mapForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            let lat = document.getElementById('sys-station-lat').value;
+            let lng = document.getElementById('sys-station-lng').value;
+            
+            const isAddress = document.getElementById('map-location-type-toggle').checked;
+            if (isAddress) {
+                const address = document.getElementById('sys-station-address').value;
+                if (!address) {
+                    showToast('Bitte eine Adresse eingeben.', 'error');
+                    return;
+                }
+                try {
+                    const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+                    const nomData = await nomRes.json();
+                    if (nomData && nomData.length > 0) {
+                        lat = nomData[0].lat;
+                        lng = nomData[0].lon;
+                        document.getElementById('sys-station-lat').value = lat;
+                        document.getElementById('sys-station-lng').value = lng;
+                    } else {
+                        showToast('Adresse konnte nicht gefunden werden.', 'error');
+                        return;
+                    }
+                } catch(err) {
+                    showToast('Fehler bei der Adresssuche.', 'error');
+                    return;
+                }
+            }
+
             const data = {
-                station_lat: document.getElementById('sys-station-lat').value,
-                station_lng: document.getElementById('sys-station-lng').value
+                station_lat: lat,
+                station_lng: lng
             };
             try {
                 const res = await fetch('/api/settings', {
@@ -1342,18 +1375,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const list = document.getElementById('missions-list');
             if(!list) return;
 
-            if(missions.length === 0) {
+            const activeMissions = missions.filter(m => m.status !== 'completed');
+            const completedMissions = missions.filter(m => m.status === 'completed');
+
+            if(activeMissions.length === 0) {
                 list.innerHTML = '<div class="text-center text-gray-500 py-4">Keine aktiven Einsätze.</div>';
-                return;
+            } else {
+                list.innerHTML = activeMissions.map(m => `
+                    <div class="p-3 border border-gray-200 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" onclick="openMissionDetail(${m.id})" style="border-left: 4px solid ${m.color_code}">
+                        <div class="font-bold truncate">${m.title}</div>
+                        <div class="text-xs text-gray-500 mt-1">${m.group_name || 'Keine Gruppe'} • ${new Date(m.created_at).toLocaleString()}</div>
+                        <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded mt-1 inline-block">Aktiv</span>
+                    </div>
+                `).join('');
             }
 
-            list.innerHTML = missions.map(m => `
-                <div class="p-3 border border-gray-200 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" onclick="openMissionDetail(${m.id})" style="border-left: 4px solid ${m.color_code}">
-                    <div class="font-bold truncate">${m.title}</div>
-                    <div class="text-xs text-gray-500 mt-1">${m.group_name || 'Keine Gruppe'} • ${new Date(m.created_at).toLocaleString()}</div>
-                    ${m.status === 'completed' ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Abgeschlossen</span>' : '<span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Aktiv</span>'}
-                </div>
-            `).join('');
+            const completedList = document.getElementById('completed-missions-list');
+            if(completedList) {
+                if(completedMissions.length === 0) {
+                    completedList.innerHTML = '<div class="text-center text-gray-500 py-4">Keine abgeschlossenen Einsätze.</div>';
+                } else {
+                    completedList.innerHTML = completedMissions.map(m => `
+                        <div class="p-3 border border-gray-200 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors opacity-75" onclick="openMissionDetail(${m.id})" style="border-left: 4px solid ${m.color_code}">
+                            <div class="font-bold truncate">${m.title}</div>
+                            <div class="text-xs text-gray-500 mt-1">${m.group_name || 'Keine Gruppe'} • ${new Date(m.created_at).toLocaleString()}</div>
+                            <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded mt-1 inline-block">Abgeschlossen</span>
+                        </div>
+                    `).join('');
+                }
+            }
             
             // Populate group select in new mission modal
             const gRes = await fetch('/api/groups');
@@ -1435,12 +1485,44 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 mb-2">
                                     <div class="flex justify-between items-center">
                                         <span class="text-md font-bold"><i class="fa-solid fa-truck text-red-500 mr-2"></i>${v.name}</span>
-                                        <button onclick="unassignVehicle(${v.id})" class="text-xs bg-red-600 hover:bg-red-500 transition-colors text-white px-3 py-1.5 rounded-lg shadow">Abziehen</button>
+                                        ${window.currentMissionStatus !== 'completed' ? `<button onclick="unassignVehicle(${v.id})" class="text-xs bg-red-600 hover:bg-red-500 transition-colors text-white px-3 py-1.5 rounded-lg shadow">Abziehen</button>` : ''}
                                     </div>
                                     ${equipHtml}
                                 </div>
                             `;
                         }).join('');
+                    }
+                }
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    };
+
+    window.loadMissionGroups = async () => {
+        try {
+            const res = await fetch('/api/groups');
+            const groups = await res.json();
+            
+            if(window.currentOpenMissionId) {
+                const select = document.getElementById('assign-group-select');
+                if(select) {
+                    const availableGroups = groups.filter(g => !g.current_mission_id);
+                    select.innerHTML = '<option value="">Gruppe wählen...</option>' + availableGroups.map(g => `<option value="${g.id}">${g.group_name}</option>`).join('');
+                }
+
+                const assignedList = document.getElementById('mission-groups-list');
+                if(assignedList) {
+                    const assignedGroups = groups.filter(g => g.current_mission_id === window.currentOpenMissionId);
+                    if(assignedGroups.length === 0) {
+                        assignedList.innerHTML = '<div class="text-xs text-gray-500">Keine Gruppen zugewiesen.</div>';
+                    } else {
+                        assignedList.innerHTML = assignedGroups.map(g => `
+                            <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 mb-2 flex justify-between items-center">
+                                <span class="text-md font-bold"><i class="fa-solid fa-users text-blue-500 mr-2"></i>${g.group_name}</span>
+                                ${window.currentMissionStatus !== 'completed' ? `<button onclick="unassignGroup(${g.id})" class="text-xs bg-red-600 hover:bg-red-500 transition-colors text-white px-3 py-1.5 rounded-lg shadow">Abziehen</button>` : ''}
+                            </div>
+                        `).join('');
                     }
                 }
             }
@@ -1471,6 +1553,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.openMissionDetail = async (id) => {
         window.currentOpenMissionId = id;
+        window.currentMissionStatus = null;
         document.getElementById('mission-detail-placeholder').classList.add('hidden');
         document.getElementById('mission-detail-view').classList.remove('hidden');
         
@@ -1480,6 +1563,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const mission = missions.find(m => m.id === id);
             
             if(mission) {
+                window.currentMissionStatus = mission.status;
                 document.getElementById('mission-detail-title').textContent = `Einsatz: ${mission.title}`;
                 document.getElementById('mission-detail-desc').textContent = mission.description || 'Keine Beschreibung vorhanden.';
                 
@@ -1532,7 +1616,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 };
 
+                if (mission.status === 'completed') {
+                    btnComplete.classList.add('hidden');
+                    if (document.getElementById('assign-vehicle-container')) document.getElementById('assign-vehicle-container').classList.add('hidden');
+                    if (document.getElementById('assign-group-container')) document.getElementById('assign-group-container').classList.add('hidden');
+                } else {
+                    if (document.getElementById('assign-vehicle-container')) document.getElementById('assign-vehicle-container').classList.remove('hidden');
+                    if (document.getElementById('assign-group-container')) document.getElementById('assign-group-container').classList.remove('hidden');
+                }
+
                 loadVehicles();
+                loadMissionGroups();
                 loadMissionLogs(id);
             }
         } catch(e) {}
@@ -1649,12 +1743,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const assignGroupBtn = document.getElementById('btn-assign-group');
+    if(assignGroupBtn) {
+        assignGroupBtn.addEventListener('click', async() => {
+            const gId = document.getElementById('assign-group-select').value;
+            if(!gId || !window.currentOpenMissionId) return;
+            
+            await fetch(`/api/groups/${gId}/mission`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({current_mission_id: window.currentOpenMissionId})
+            });
+            
+            await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({log_text: `Gruppe zugewiesen.`})
+            });
+        });
+    }
+
     window.unassignVehicle = async (id) => {
         await fetch(`/api/vehicles/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({current_mission_id: null, status: 'available'})
         });
+    };
+
+    window.unassignGroup = async (id) => {
+        await fetch(`/api/groups/${id}/mission`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_mission_id: null})
+        });
+    };
         
         if(window.currentOpenMissionId) {
             await fetch(`/api/missions/${window.currentOpenMissionId}/logs`, {
@@ -1715,18 +1838,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const membersListBody = document.getElementById('members-management-list');
             if (membersListBody) {
                 membersListBody.innerHTML = users.map(u => {
-                    const dateStr = u.created_at ? new Date(u.created_at).toLocaleString('de-DE') : 'Unbekannt';
                     return `
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td class="px-4 py-3 border-b dark:border-gray-700 font-bold">${u.first_name || ''} ${u.last_name || ''}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700">${u.username}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700">${window.getRoleBadge(u.role_name)}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700">${u.group_name || '-'}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700 text-xs text-gray-500">${dateStr}</td>
-                        <td class="px-4 py-3 border-b dark:border-gray-700 text-right space-x-2">
-                            ${window.currentRole === 'Admin' ? `<button onclick="revealToken(this, '${u.invite_token || ''}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors" title="Token anzeigen"><i class="fa-solid fa-key"></i></button>` : ''}
-                            <button onclick="openEditMemberModal(${u.id})" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-xs rounded transition-colors" title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick="deleteUser(${u.id})" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors" title="Löschen"><i class="fa-solid fa-trash"></i></button>
+                        <td class="px-2 py-3 border-b dark:border-gray-700 font-bold">${u.first_name || ''} ${u.last_name || ''}</td>
+                        <td class="px-2 py-3 border-b dark:border-gray-700">${u.username}</td>
+                        <td class="px-2 py-3 border-b dark:border-gray-700">${u.group_name || '-'}</td>
+                        <td class="px-2 py-3 border-b dark:border-gray-700">${window.getRoleBadge(u.role_name)}</td>
+                        <td class="px-2 py-3 border-b dark:border-gray-700 text-right space-x-1">
+                            ${window.currentRole === 'Admin' ? `<button onclick="revealToken(this, '${u.invite_token || ''}')" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors" title="Token anzeigen"><i class="fa-solid fa-key"></i></button>` : ''}
+                            <button onclick="openEditMemberModal(${u.id})" class="px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-xs rounded transition-colors" title="Bearbeiten"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteUser(${u.id})" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors" title="Löschen"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                     `;

@@ -74,12 +74,23 @@ if os.path.exists('/.dockerenv'):
     log_file = os.path.join('data', 'warnzentrale.log')
 else:
     log_file = 'warnzentrale.log'
-logging.basicConfig(level=logging.INFO,
-                    format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": "%(message)s"}',
-                    handlers=[
-                        logging.FileHandler(log_file, encoding='utf-8'),
-                        logging.StreamHandler()
-                    ])
+import json
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "message": record.getMessage()
+        }
+        return json.dumps(log_record)
+
+formatter = JsonFormatter()
+file_handler = logging.FileHandler(log_file, encoding='utf-8')
+file_handler.setFormatter(formatter)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 logger = logging.getLogger(__name__)
 
 def schedule_restart():
@@ -131,12 +142,18 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         group_name TEXT UNIQUE NOT NULL,
         description TEXT,
-        color TEXT DEFAULT '#e11d48'
+        color TEXT DEFAULT '#e11d48',
+        current_mission_id INTEGER,
+        FOREIGN KEY(current_mission_id) REFERENCES missions(id)
     )''')
     
-    # Try to add color column if it's an old DB
+    # Try to add color and current_mission_id columns if it's an old DB
     try:
         c.execute("ALTER TABLE groups ADD COLUMN color TEXT DEFAULT '#e11d48'")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        c.execute("ALTER TABLE groups ADD COLUMN current_mission_id INTEGER REFERENCES missions(id)")
     except sqlite3.OperationalError:
         pass # Column already exists
     
@@ -846,7 +863,7 @@ def update_user_group(user_id):
 @login_required
 def api_get_groups():
     conn = get_db()
-    rows = conn.execute("SELECT id, group_name, description, color FROM groups ORDER BY group_name ASC").fetchall()
+    rows = conn.execute("SELECT id, group_name, description, color, current_mission_id FROM groups ORDER BY group_name ASC").fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -882,6 +899,7 @@ def api_mission_detail(mission_id):
     if request.method == 'DELETE':
         conn.execute("DELETE FROM mission_logs WHERE mission_id = ?", (mission_id,))
         conn.execute("UPDATE vehicles SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
+        conn.execute("UPDATE groups SET current_mission_id = NULL WHERE current_mission_id = ?", (mission_id,))
         conn.execute("DELETE FROM missions WHERE id = ?", (mission_id,))
         conn.commit()
         conn.close()
@@ -934,13 +952,31 @@ def api_vehicle_detail(vehicle_id):
         return jsonify({"success": True})
     elif request.method == 'PUT':
         data = request.json
-        conn.execute("UPDATE vehicles SET name = COALESCE(?, name), type = COALESCE(?, type), equipment_list = COALESCE(?, equipment_list), checklist_state = COALESCE(?, checklist_state), status = COALESCE(?, status), current_mission_id = COALESCE(?, current_mission_id) WHERE id = ?", 
-                     (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
+        if 'current_mission_id' in data:
+            conn.execute("UPDATE vehicles SET name = COALESCE(?, name), type = COALESCE(?, type), equipment_list = COALESCE(?, equipment_list), checklist_state = COALESCE(?, checklist_state), status = COALESCE(?, status), current_mission_id = ? WHERE id = ?", 
+                         (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), data.get('current_mission_id'), vehicle_id))
+        else:
+            conn.execute("UPDATE vehicles SET name = COALESCE(?, name), type = COALESCE(?, type), equipment_list = COALESCE(?, equipment_list), checklist_state = COALESCE(?, checklist_state), status = COALESCE(?, status) WHERE id = ?", 
+                         (data.get('name'), data.get('type'), data.get('equipment_list'), data.get('checklist_state'), data.get('status'), vehicle_id))
         conn.commit()
         conn.close()
         logger.info(f"Benutzer '{session.get('username')}' hat das Fahrzeug/Gerät (ID: {vehicle_id}) aktualisiert.")
         socketio.emit('vehicles_update')
         return jsonify({"success": True})
+
+@app.route('/api/groups/<int:group_id>/mission', methods=['PUT'])
+@login_required
+@permission_required('manage_missions')
+def api_group_mission_assign(group_id):
+    conn = get_db()
+    data = request.json
+    conn.execute("UPDATE groups SET current_mission_id = ? WHERE id = ?", (data.get('current_mission_id'), group_id))
+    conn.commit()
+    conn.close()
+    logger.info(f"Benutzer '{session.get('username')}' hat die Gruppe (ID: {group_id}) zum Einsatz {data.get('current_mission_id')} zugewiesen.")
+    socketio.emit('groups_update')
+    return jsonify({"success": True})
+
 
 @app.route('/api/missions/<int:mission_id>/logs', methods=['GET', 'POST'])
 @login_required
@@ -1032,13 +1068,19 @@ def manage_user(user_id):
     elif request.method == 'PUT':
         data = request.json
         if user_id == 1:
-            if data.get('username') and data.get('username').lower() != 'admin':
+            admin_user = conn.execute("SELECT * FROM users WHERE id = 1").fetchone()
+            if data.get('username') and data.get('username').lower() != admin_user['username'].lower():
                 conn.close()
                 return jsonify({"error": "Sicherheitswarnung: Der Benutzername des Hauptadministrators darf nicht geändert werden!"}), 403
-            if data.get('role_id') and str(data.get('role_id')) != '1':
+            if data.get('role_id') and str(data.get('role_id')) != str(admin_user['role_id']):
                 conn.close()
                 return jsonify({"error": "Sicherheitswarnung: Die Rolle des Hauptadministrators darf nicht geändert werden!"}), 403
-            
+            if ('first_name' in data and data['first_name'] != admin_user['first_name']) or ('last_name' in data and data['last_name'] != admin_user['last_name']):
+                conn.close()
+                return jsonify({"error": "Sicherheitswarnung: Der Name des Hauptadministrators darf nicht geändert werden!"}), 403
+            if 'group_id' in data and data['group_id'] != admin_user['group_id']:
+                conn.close()
+                return jsonify({"error": "Sicherheitswarnung: Der Hauptadministrator darf Gruppen weder beitreten noch verlassen!"}), 403
         conn.execute("UPDATE users SET username = COALESCE(?, username), first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), group_id = COALESCE(?, group_id), role_id = COALESCE(?, role_id) WHERE id = ?", 
                      (data.get('username'), data.get('first_name'), data.get('last_name'), data.get('group_id'), data.get('role_id'), user_id))
         conn.commit()

@@ -191,8 +191,19 @@
     <!-- Notification Toast -->
                 <!-- Missions List -->
                 <div class="lg:col-span-1 glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md flex flex-col overflow-hidden">
-                    <h3 class="font-bold p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">Laufende Einsätze</h3>
-                    <div id="missions-list" class="flex-1 overflow-y-auto p-4 space-y-4">
+                    <button class="w-full font-bold p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center focus:outline-none" onclick="document.getElementById('missions-list').classList.toggle('hidden')">
+                        <span>Laufende Einsätze</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="missions-list" class="overflow-y-auto p-4 space-y-4 max-h-96">
+                        <!-- Filled by JS -->
+                    </div>
+                    
+                    <button class="w-full font-bold p-4 border-y border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center focus:outline-none" onclick="document.getElementById('completed-missions-list').classList.toggle('hidden')">
+                        <span>Abgeschlossene Einsätze</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="completed-missions-list" class="overflow-y-auto p-4 space-y-4 max-h-96 hidden">
                         <!-- Filled by JS -->
                     </div>
                 </div>
@@ -218,11 +229,20 @@
                                 <h4 class="text-xs text-gray-500 uppercase tracking-wider mb-2">Zugeordnete Fahrzeuge</h4>
                                 <div id="mission-vehicles-list" class="space-y-2"></div>
                             </div>
+                            <div>
+                                <h4 class="text-xs text-gray-500 uppercase tracking-wider mb-2 mt-4">Zugeordnete Gruppen</h4>
+                                <div id="mission-groups-list" class="space-y-2"></div>
+                            </div>
                             <div class="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
                                 <h4 class="text-xs text-gray-500 uppercase tracking-wider mb-2">Fahrzeug zuweisen</h4>
-                                <div class="flex space-x-2">
+                                <div class="flex space-x-2 mb-3" id="assign-vehicle-container">
                                     <select id="assign-vehicle-select" class="flex-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded p-1 text-sm"></select>
                                     <button id="btn-assign-vehicle" class="bg-gray-800 text-white px-3 py-1 text-sm rounded">Zuweisen</button>
+                                </div>
+                                <h4 class="text-xs text-gray-500 uppercase tracking-wider mb-2">Gruppe zuweisen</h4>
+                                <div class="flex space-x-2" id="assign-group-container">
+                                    <select id="assign-group-select" class="flex-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded p-1 text-sm"></select>
+                                    <button id="btn-assign-group" class="bg-gray-800 text-white px-3 py-1 text-sm rounded">Zuweisen</button>
                                 </div>
                             </div>
                         </div>
@@ -358,66 +378,70 @@
         <div id="tab-rights" class="tab-content hidden flex-1 glass-panel rounded-2xl border border-gray-200 dark:border-gray-800 shadow-md p-6 overflow-y-auto">
             <h2 class="text-2xl font-bold mb-6"><i class="fa-solid fa-users-gear mr-2"></i> Mitglieder & Gruppen</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Group Management Form -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full" data-req-perm="manage_groups">
-                    <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Neue Gruppe erstellen</h3>
-                    <form id="group-form" class="space-y-4 flex-1 flex flex-col justify-between">
-                        <div class="space-y-4">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <!-- Left Column: Mitglieder -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-xl border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-user text-neon-green mr-2"></i> Mitglieder-Verwaltung</h3>
+                    
+                    <!-- Create Member -->
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl" data-req-perm="manage_users">
+                        <h4 class="font-bold text-lg mb-4"><i class="fa-solid fa-user-plus mr-2"></i> Neues Mitglied anlegen</h4>
+                        <form id="create-user-form" class="space-y-4">
+                            <input type="text" id="new-user-firstname" placeholder="Vorname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                            <input type="text" id="new-user-lastname" placeholder="Nachname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
+                            <select id="new-user-group" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
+                                <option value="">(Keine Gruppe)</option>
+                            </select>
+                            <button type="submit" class="w-full bg-neon-green hover:bg-green-500 text-black font-bold py-2 px-4 rounded shadow transition-all">Mitglied anlegen</button>
+                        </form>
+                    </div>
+
+                    <!-- Existing Members List -->
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl" data-req-perm="manage_users">
+                        <h4 class="font-bold text-lg mb-4"><i class="fa-solid fa-address-book mr-2"></i> Vorhandene Mitglieder</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left text-sm whitespace-nowrap">
+                                <thead class="uppercase tracking-wider border-b-2 dark:border-gray-700">
+                                    <tr>
+                                        <th class="px-2 py-2">Name</th>
+                                        <th class="px-2 py-2">Nutzername</th>
+                                        <th class="px-2 py-2">Gruppe</th>
+                                        <th class="px-2 py-2">Rolle</th>
+                                        <th class="px-2 py-2 text-right">Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="members-management-list" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Gruppen -->
+                <div class="space-y-6">
+                    <h3 class="font-bold text-xl border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-users text-blue-500 mr-2"></i> Gruppen-Verwaltung</h3>
+                    
+                    <!-- Group Management Form -->
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl" data-req-perm="manage_groups">
+                        <h4 class="font-bold text-lg mb-4"><i class="fa-solid fa-folder-plus mr-2"></i> Neue Gruppe erstellen</h4>
+                        <form id="group-form" class="space-y-4">
                             <input type="text" id="group-name" placeholder="Gruppenname (z.B. Löschzug 2)" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
                             <input type="text" id="group-desc" placeholder="Beschreibung" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
                             <div class="flex items-center space-x-2">
                                 <label class="text-sm font-medium text-gray-700 dark:text-gray-400">Gruppenfarbe:</label>
                                 <input type="color" id="group-color" value="#e11d48" class="h-8 w-14 cursor-pointer bg-transparent border-0 p-0">
                             </div>
+                            <button type="submit" class="w-full bg-gray-800 hover:bg-black text-white py-2 px-4 rounded shadow transition-colors">Gruppe anlegen</button>
+                        </form>
+                    </div>
+
+                    <!-- Existing Groups List -->
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl" data-req-perm="manage_groups">
+                        <h4 class="font-bold text-lg mb-4"><i class="fa-solid fa-folder-open mr-2"></i> Vorhandene Gruppen</h4>
+                        <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- JS injected cards -->
                         </div>
-                        <button type="submit" class="bg-gray-800 hover:bg-black text-white py-2 px-4 rounded shadow transition-colors mt-4">Gruppe anlegen</button>
-                    </form>
-                </div>
-
-                <!-- Create Member -->
-                <div class="bg-gray-50 dark:bg-gray-900/50 p-4 border border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col h-full" data-req-perm="manage_users">
-                    <h3 class="font-bold text-lg mb-4"><i class="fa-solid fa-user-plus mr-2"></i> Neues Mitglied anlegen</h3>
-                    <form id="create-user-form" class="space-y-4 flex-1 flex flex-col justify-between">
-                        <div class="space-y-4">
-                            <input type="text" id="new-user-firstname" placeholder="Vorname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
-                            <input type="text" id="new-user-lastname" placeholder="Nachname" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none" required>
-                            <select id="new-user-group" class="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded p-2 focus:border-neon-green focus:outline-none">
-                                <option value="">(Keine Gruppe)</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold py-2 px-4 rounded shadow transition-all mt-4">Mitglied anlegen</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Existing Groups List -->
-            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6" data-req-perm="manage_groups">
-                <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-folder-open mr-2"></i> Vorhandene Gruppen</h3>
-                <div id="groups-management-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- JS injected cards -->
-                </div>
-            </div>
-
-            <!-- Existing Members List -->
-            <div class="bg-gray-50 dark:bg-gray-900/50 p-6 border border-gray-200 dark:border-gray-700 rounded-2xl mt-6" data-req-perm="manage_users">
-                <h3 class="font-bold text-xl mb-6 border-b border-gray-200 dark:border-gray-700 pb-2"><i class="fa-solid fa-address-book mr-2"></i> Vorhandene Mitglieder</h3>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-left text-sm whitespace-nowrap">
-                            <thead class="uppercase tracking-wider border-b-2 dark:border-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3">Name</th>
-                                    <th class="px-4 py-3">Benutzername</th>
-                                    <th class="px-4 py-3">Rolle</th>
-                                    <th class="px-4 py-3">Gruppe</th>
-                                    <th class="px-4 py-3">Erstellt am</th>
-                                    <th class="px-4 py-3 text-right">Aktionen</th>
-                                </tr>
-                            </thead>
-                            <tbody id="members-management-list" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <!-- JS injected rows -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>
@@ -549,7 +573,16 @@
                     </button>
                     <div id="acc-section-map" class="p-6 glass-panel hidden">
                         <form id="map-form" class="space-y-6">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="flex items-center space-x-3 mb-6">
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Breiten-/Längengrad</span>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="map-location-type-toggle" class="sr-only peer" onchange="document.getElementById('map-latlng-inputs').classList.toggle('hidden', this.checked); document.getElementById('map-address-input').classList.toggle('hidden', !this.checked);">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                                <span class="text-sm font-medium text-gray-800 dark:text-white">Adresse</span>
+                            </div>
+                            
+                            <div id="map-latlng-inputs" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Feuerwache Breitengrad (Latitude)</label>
                                     <input type="text" id="sys-station-lat" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="z.B. 48.2082">
@@ -558,6 +591,11 @@
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Feuerwache Längengrad (Longitude)</label>
                                     <input type="text" id="sys-station-lng" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="z.B. 16.3738">
                                 </div>
+                            </div>
+                            
+                            <div id="map-address-input" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">Feuerwache genaue Adresse</label>
+                                <input type="text" id="sys-station-address" class="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-2 text-gray-800 dark:text-white focus:border-neon-green focus:outline-none" placeholder="z.B. Musterstraße 1, 1234 Musterstadt">
                             </div>
                             <button type="submit" class="bg-neon-green hover:bg-green-500 text-black font-bold px-6 py-2 rounded shadow transition-all">
                                 <i class="fa-solid fa-save mr-2"></i> Karten-Einstellungen speichern
